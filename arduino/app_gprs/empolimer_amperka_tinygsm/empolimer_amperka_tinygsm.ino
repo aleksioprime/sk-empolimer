@@ -5,12 +5,8 @@
 #include <PubSubClient.h>   // MQTT-клиент
 #include <TroykaDHT.h>      // Работа с датчиком температуры и влажности DHT
 
-// --- Аппаратные пины ---
-#define PIN_PWRKEY 2  // Пин PowerKey SIM800 (PK)
-#define PIN_STATUS 3  // Пин статуса SIM800 (ST), если не используешь — закомментируй
-
 // --- Датчик DHT ---
-DHT dht(12, DHT11);  // DHT11 на пине 12
+DHT dht(8, DHT11);  // DHT11 на пине 12
 
 // --- Используем аппаратный Serial для модема ---
 TinyGsm modem(Serial);  // TinyGsm через Serial (Serial1 для Mega)
