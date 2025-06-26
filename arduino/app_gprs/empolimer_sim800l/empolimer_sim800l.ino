@@ -125,7 +125,7 @@ void loop() {
   switch (gprsState) {
     case GPRS_INIT:
       Serial.println("Попытка подключения к GPRS...");
-      modem.gprsConnect(apn, gprsUser, gprsPass);  // Асинхронный запуск подключения!
+      modem.gprsConnect(apn, gprsUser, gprsPass);
       gprsState = GPRS_CONNECTING;
       gprsStartTime = now;
       break;
