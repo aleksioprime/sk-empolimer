@@ -141,6 +141,17 @@ sudo crontab -e
 0 3 * * * docker exec empolimer-front certbot renew --quiet && docker exec empolimer-front nginx -s reload
 ```
 
+Добавье администратора на сервер
+
+```
+docker compose -p empolimer exec empolimer-back python scripts/create_superuser.py \
+  --username superuser \
+  --password 1qaz@WSX \
+  --email admin@empolimer.ru
+```
+
+docker compose -p empolimer logs
+
 Удаление сертификатов:
 ```
 docker exec -it empolimer-front rm -rf /etc/letsencrypt/renewal/empolimer.ru.conf
