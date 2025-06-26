@@ -11,10 +11,10 @@ export const isLoggedIn = async ({ to }) => {
   if (!accessToken || !authStore.isAuthenticated) {
     if (!jwtService.getRefreshToken()) return { name: "login" };
     try {
-      console.log("Attempting token refresh...");
+      logger.info("Attempting token refresh...");
       await authStore.refresh(); // Обновляем токен
     } catch (error) {
-      console.error("Token refresh failed:", error);
+      logger.error("Token refresh failed:", error);
     }
   }
 

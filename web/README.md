@@ -175,3 +175,19 @@ docker exec empolimer-back python scripts/create_superuser.py \
 ```
 mosquitto_pub -h empolimer.ru -p 1883 -t "devices/demo/air" -i pub_test -u empolimer -P Techno2025 -m '{"datetime":"2025-06-26T21:41:38+12","temp":15.3,"hum":15.0}'
 ```
+
+Подключитесь к базе данных:
+
+```
+docker exec -it empolimer-postgres bash
+psql -U admin -d empolimer
+```
+
+Удалить все данные устройства по его имени:
+
+```
+DELETE FROM device_data
+WHERE device_id IN (
+    SELECT id FROM devices WHERE name = 'demo'
+);
+```
