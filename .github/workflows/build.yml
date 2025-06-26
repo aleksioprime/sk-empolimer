@@ -51,35 +51,7 @@ jobs:
           fi
         done
 
-    - name: Check changed files
-      id: check_changes
-      run: |
-        echo "Checking changed files..."
-        CHANGED_BACKEND=$(git diff --name-only HEAD^ HEAD | grep -E '^web/back/' || true)
-        CHANGED_FRONTEND=$(git diff --name-only HEAD^ HEAD | grep -E '^web/front/' || true)
-
-        if [[ -n "$CHANGED_BACKEND" ]]; then
-          echo "Backend changed"
-          echo "BUILD_BACKEND=true" >> $GITHUB_ENV
-          echo "BUILD_BACKEND=true" >> $GITHUB_OUTPUT
-        else
-          echo "Backend not changed"
-          echo "BUILD_BACKEND=false" >> $GITHUB_ENV
-          echo "BUILD_BACKEND=false" >> $GITHUB_OUTPUT
-        fi
-
-        if [[ -n "$CHANGED_FRONTEND" ]]; then
-          echo "Frontend changed"
-          echo "BUILD_FRONTEND=true" >> $GITHUB_ENV
-          echo "BUILD_FRONTEND=true" >> $GITHUB_OUTPUT
-        else
-          echo "Frontend not changed"
-          echo "BUILD_FRONTEND=false" >> $GITHUB_ENV
-          echo "BUILD_FRONTEND=false" >> $GITHUB_OUTPUT
-        fi
-
     - name: Build and push backend image
-      if: steps.check_changes.outputs.BUILD_BACKEND == 'true'
       run: |
         docker build -t aleksioprime/empolimer-back:latest ./web/back
         docker push aleksioprime/empolimer-back:latest
@@ -90,7 +62,6 @@ jobs:
         docker push aleksioprime/empolimer-worker:latest
 
     - name: Build and push frontend image
-      if: steps.check_changes.outputs.BUILD_FRONTEND == 'true'
       run: |
         docker build --target prod \
           --build-arg VITE_LOGGING=$VITE_LOGGING \
