@@ -27,19 +27,19 @@ jobs:
         ssh -i ~/.ssh/id_rsa ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
 
           # Создаём папку, если её нет
-          mkdir -p ~/repgen
-          cd ~/repgen
+          mkdir -p ~/empolimer
+          cd ~/empolimer
 
           # Загружаем переменные окружения на сервер
-          echo "${{ secrets.ENV_VARS }}" > ~/repgen/.env
+          echo "${{ secrets.ENV_VARS }}" > ~/empolimer/.env
           echo "Файл .env загружен на сервер"
 
-          curl -o ~/repgen/docker-compose.prod.yaml https://raw.githubusercontent.com/aleksioprime/empolimer/main/docker-compose.prod.yaml
+          curl -o ~/empolimer/docker-compose.prod.yaml https://raw.githubusercontent.com/aleksioprime/empolimer/main/docker-compose.prod.yaml
 
           # Если nginx.conf НЕ существует, скачиваем его
-          if [ ! -f ~/repgen/nginx/nginx.conf ]; then
+          if [ ! -f ~/empolimer/nginx/nginx.conf ]; then
             echo "Файл nginx.conf не найден. Скачиваем..."
-            curl -o ~/repgen/nginx/nginx.conf https://raw.githubusercontent.com/aleksioprime/empolimer/main/web/front/nginx/nginx.conf
+            curl -o ~/empolimer/nginx/nginx.conf https://raw.githubusercontent.com/aleksioprime/empolimer/main/web/front/nginx/nginx.conf
           else
             echo "Файл nginx.conf уже существует. Не скачиваем."
           fi
