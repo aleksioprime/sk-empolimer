@@ -46,24 +46,19 @@ class MQTTWorker:
     async def process_message(self, message):
         try:
             payload = json.loads(message.payload.decode())
-            device_id = parse_device_id(message.topic.value)
+            device_name = parse_device_id(message.topic.value)
 
-            if not self.is_valid_uuid(device_id):
-                logger.error(f"Неверный формат UUID device_id: {device_id}")
-                return
-
-            device_uuid = uuid.UUID(device_id)
             dt = parse_datetime(payload.get('datetime'))
 
             async with session_factory() as session:
-                result = await session.execute(select(Device).where(Device.id == device_uuid))
+                result = await session.execute(select(Device).where(Device.name == device_name))
                 device = result.scalar()
                 if not device:
-                    logger.error(f"Устройство с таким UUID не найдено: {device_uuid}")
+                    logger.error(f"Устройство с таким названием не найдено: {device_name}")
                     return
 
                 data = DeviceData(
-                    device_id=device_id,
+                    device_id=device.id,
                     timestamp=dt,
                     temperature=payload.get("temp"),
                     humidity=payload.get("hum"),
@@ -72,7 +67,7 @@ class MQTTWorker:
                 await session.commit()
 
                 logger.info(
-                    f"Данные сохранены: {device_id} {dt} t={payload.get('temp')} h={payload.get('hum')}"
+                    f"Данные сохранены: {device_name} {dt} t={payload.get('temp')} h={payload.get('hum')}"
                 )
         except Exception as e:
             logger.error(f"Ошибка обработки сообщения: {e}")

@@ -71,6 +71,7 @@ class DeviceRepository:
     async def create(self, device: Device) -> None:
         """ Создаёт новое устройство """
         self.session.add(device)
+        await self.session.flush()
 
     async def update(self, device_id: UUID, body: DeviceUpdateSchema) -> Device:
         """ Обновляет устройство по его ID """

@@ -8,12 +8,16 @@ T = TypeVar("T")
 
 
 class PaginatedResponse(BaseModel, Generic[T]):
-    items: List[T]
-    total: int
-    limit: int
-    offset: int
-    has_next: bool
-    has_previous: bool
+    """
+    Универсальная структура ответа для постраничной навигации (pagination).
+    Позволяет возвращать список элементов с информацией о текущей странице и наличии следующих/предыдущих страниц.
+    """
+    items: List[T] = Field(..., description="Список элементов на текущей странице")
+    total: int = Field(..., description="Общее количество элементов")
+    limit: int = Field(..., description="Максимальное количество элементов на странице")
+    offset: int = Field(..., description="Смещение от начала коллекции")
+    has_next: bool = Field(..., description="Есть ли следующая страница")
+    has_previous: bool = Field(..., description="Есть ли предыдущая страница")
 
 
 class BasePaginationParams(BaseModel):

@@ -3,6 +3,7 @@ from src.db.postgres import async_session_maker
 from src.repositories.auth import AuthRepository
 from src.repositories.user import UserRepository
 from src.repositories.device import DeviceRepository
+from src.repositories.data import DeviceDataRepository
 
 
 class UnitOfWork:
@@ -14,6 +15,7 @@ class UnitOfWork:
         self.auth = AuthRepository(self.session)
         self.user = UserRepository(self.session)
         self.device = DeviceRepository(self.session)
+        self.data = DeviceDataRepository(self.session)
 
     async def __aexit__(self, exc_type, exc_value, traceback):
         if exc_type is not None:

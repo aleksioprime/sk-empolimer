@@ -1,7 +1,3 @@
-"""
-Модуль с эндпоинтами для управления устройствами съёмки
-"""
-
 from typing import Annotated
 from uuid import UUID
 

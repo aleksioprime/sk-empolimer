@@ -70,8 +70,6 @@ class DeviceService:
                     location=body.location,
                 )
                 await self.uow.device.create(device)
-                await self.uow.session.flush()
-                device = await self.uow.device._get_by_id(device.id)
             except IntegrityError as exc:
                 raise BaseException("Устройство уже существует") from exc
 
@@ -88,6 +86,8 @@ class DeviceService:
                     raise NotFoundException(f"Устройство с ID {device_id} не найдено")
             except NoResultFound as exc:
                 raise NotFoundException(f"Устройство с ID {device_id} не найдено") from exc
+            except IntegrityError as exc:
+                raise BaseException("Устройство уже существует") from exc
 
         return DeviceEditSchema.model_validate(device)
 

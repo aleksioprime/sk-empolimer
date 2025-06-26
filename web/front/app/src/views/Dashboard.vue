@@ -25,7 +25,9 @@
       <v-col v-for="device in devices" :key="device.id" cols="12" sm="6" md="4" lg="3">
         <v-card>
           <v-card-title class="d-flex align-center no-wrap-title">
-            <v-icon class="me-2" color="primary">mdi-access-point</v-icon>
+            <v-icon class="me-2" :color="device.online ? 'green' : 'grey'">
+              {{ device.online ? 'mdi-access-point' : 'mdi-access-point-off' }}
+            </v-icon>
             {{ device.name }}
             <v-spacer />
             <v-menu offset-y>
@@ -58,29 +60,25 @@
           </v-card-title>
           <v-card-text>
             <div class="mb-2">
-              <span class="font-weight-bold">Описание:</span>
+              <span class="font-weight-bold">Описание:&nbsp;</span>
               <span>{{ device.description || '—' }}</span>
             </div>
             <div class="mb-2">
-              <span class="font-weight-bold">Локация:</span>
+              <span class="font-weight-bold">Локация:&nbsp;</span>
               <span>{{ device.location || '—' }}</span>
             </div>
+            <hr class="mb-2">
             <div class="mb-2" v-if="device.last_data">
-              <v-icon class="me-2" color="blue">mdi-thermometer</v-icon>
-              Температура: <b class="ms-1">{{ device.last_data.temperature }}°C</b>
+              <v-icon class="me-1" color="blue">mdi-thermometer</v-icon>
+              Температура: <b>{{ device.last_data.temperature }}°C</b>
             </div>
             <div class="mb-2" v-if="device.last_data">
-              <v-icon class="me-2" color="green">mdi-water-percent</v-icon>
-              Влажность: <b class="ms-1">{{ device.last_data.humidity }}%</b>
+              <v-icon class="me-1" color="green">mdi-water-percent</v-icon>
+              Влажность: <b>{{ device.last_data.humidity }}%</b>
             </div>
             <div class="d-flex align-center" v-if="device.last_data">
               <v-icon class="me-2" color="grey">mdi-clock-outline</v-icon>
-              Обновлено: <span class="ms-1">{{ formatTime(device.last_data.timestamp) }}</span>
-            </div>
-            <div class="mt-2">
-              <v-chip :color="device.online ? 'green' : 'grey'" size="small" class="ma-0 pa-0">
-                {{ device.online ? "Online" : "Offline" }}
-              </v-chip>
+              Обновлено:<span class="ms-1">{{ formatTime(device.last_data.timestamp) }}</span>
             </div>
           </v-card-text>
         </v-card>
@@ -94,9 +92,11 @@
           {{ editingDevice ? "Редактировать устройство" : "Добавить устройство" }}
         </v-card-title>
         <v-card-text>
-          <v-text-field v-model="form.name" label="Название" />
-          <v-text-field v-model="form.description" label="Описание" />
-          <v-text-field v-model="form.location" label="Местоположение" />
+          <v-form ref="deviceForm">
+            <v-text-field class="mb-1" v-model="form.name" label="Название" :rules="nameRules" />
+            <v-text-field class="mb-1" v-model="form.description" label="Описание" />
+            <v-text-field class="mb-1" v-model="form.location" label="Местоположение" />
+          </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -128,20 +128,12 @@
           Детали устройства: {{ deviceDetails?.name }}
         </v-card-title>
         <v-card-text v-if="deviceDetails">
-          <div>
-            <b>Описание:</b> {{ deviceDetails.description || "—" }}
-          </div>
-          <div>
-            <b>Местоположение:</b> {{ deviceDetails.location || "—" }}
-          </div>
-          <div>
-            <b>ID:</b> {{ deviceDetails.id }}
-          </div>
+          <div class="mb-1"><b>Описание:</b> {{ deviceDetails.description || "—" }}</div>
+          <div class="mb-1"><b>Местоположение:</b> {{ deviceDetails.location || "—" }}</div>
           <div v-if="deviceDetails?.data && deviceDetails.data.length">
-            <div class="mb-2"><b>График температуры и влажности</b></div>
-            <div style="width: 100%; height: 300px;">
-              <DeviceChart :data="deviceDetails.data" />
-            </div>
+            <div class="my-2"><b>Графики последних измерений</b></div>
+            <DeviceChart :data="deviceDetails.data" field="temperature" label="Температура (°C)" color="#ff5252" />
+            <DeviceChart :data="deviceDetails.data" field="humidity" label="Влажность (%)" color="#43a047" />
           </div>
         </v-card-text>
         <v-card-actions>
@@ -154,7 +146,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 
 import DeviceChart from '@/components/DeviceChart.vue'
 
@@ -173,6 +165,9 @@ const detailDialogVisible = ref(false)
 const editingDevice = ref(null)
 const deviceToDelete = ref(null)
 const deviceDetails = ref(null)
+
+const pollingInterval = 5000
+let poller = null
 
 const form = reactive({
   name: '',
@@ -200,8 +195,18 @@ function closeDialog() {
   dialogVisible.value = false
 }
 
+const deviceForm = ref(null)
+
+const nameRules = [
+  v => !!v || 'Обязательное поле',
+  v => /^[a-z0-9_]{1,8}$/.test(v) || 'Строчные латинские буквы, цифры и _ (до 8)'
+]
+
+
 async function saveDevice() {
-  if (!form.name) return
+  const { valid } = await deviceForm.value.validate();
+  if (!valid) return;
+
   if (editingDevice.value) {
     // Обновление устройства
     const updated = await deviceStore.updateDevice(editingDevice.value.id, {
@@ -253,7 +258,7 @@ async function viewDevice(device) {
 // Форматирование времени (например, HH:MM DD.MM.YY)
 function formatTime(date) {
   if (!date) return '-'
-  const d = new Date(date)
+  const d = new Date(date) // здесь автоматом учитывается зона браузера
   return (
     d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) +
     ' ' +
@@ -266,21 +271,20 @@ async function logout() {
   router.push({ name: 'login' })
 }
 
-const getChartData = (dataArray) => {
-  if (!dataArray) return []
-  return dataArray.map(item => ({
-    timestamp: item.timestamp,
-    temperature: item.temperature,
-    humidity: item.humidity,
-  }));
-};
-
-function formatChartTime(ts) {
-  const d = new Date(ts);
-  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+async function loadDevices() {
+  devices.value = await deviceStore.loadDevices();
 }
 
 onMounted(async () => {
-  devices.value = await deviceStore.loadDevices();
+  loadDevices();
+
+  poller = setInterval(() => {
+    loadDevices();
+  }, pollingInterval);
+});
+
+onUnmounted(() => {
+  // Очищаем таймер при уходе со страницы/размонтировании компонента
+  if (poller) clearInterval(poller);
 });
 </script>

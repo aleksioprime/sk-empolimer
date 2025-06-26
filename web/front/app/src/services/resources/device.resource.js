@@ -24,4 +24,8 @@ export class DeviceResource extends ApiService {
   deleteDevice(id, data) {
     return this.$delete(`/api/v1/devices/${id}/`, data);
   }
+
+  getDeviceData(id, config) {
+    return this.$get(`/api/v1/devices/${id}/data`, config);
+  }
 }

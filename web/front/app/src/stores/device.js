@@ -5,6 +5,7 @@ import resources from "@/services/resources";
 export const useDeviceStore = defineStore("device", {
   state: () => ({
     devices: [],
+    data: {},
   }),
   getters: {
 
@@ -48,6 +49,13 @@ export const useDeviceStore = defineStore("device", {
       const res = await resources.device.deleteDevice(id);
       if (res.__state === "success") {
         return true
+      }
+      return null
+    },
+    async loadDeviceData(id, config) {
+      const res = await resources.device.getDeviceData(id, config);
+      if (res.__state === "success") {
+        return res.data
       }
       return null
     },
