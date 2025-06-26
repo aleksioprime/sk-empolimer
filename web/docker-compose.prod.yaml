@@ -76,8 +76,6 @@ services:
     image: adminer
     container_name: empolimer-adminer
     <<: *app
-    ports:
-      - "81:8080"
     depends_on:
       postgres:
         condition: service_healthy

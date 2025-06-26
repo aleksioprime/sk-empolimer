@@ -141,20 +141,37 @@ sudo crontab -e
 0 3 * * * docker exec empolimer-front certbot renew --quiet && docker exec empolimer-front nginx -s reload
 ```
 
+В случае необхожимости можно удалить сертификаты:
+```
+docker exec -it empolimer-front rm -rf /etc/letsencrypt/renewal/empolimer.ru.conf
+docker exec -it empolimer-front rm -rf /etc/letsencrypt/live/empolimer.ru
+docker exec -it empolimer-front rm -rf /etc/letsencrypt/archive/empolimer.ru
+```
+
+Проверьте логи на сервере
+
+```
+docker compose -p empolimer logs
+docker logs empolimer-nodered
+```
+
+Сделать ручные миграции на сервере:
+
+```
+docker exec -it empolimer-back alembic upgrade head
+```
+
 Добавье администратора на сервер
 
 ```
-docker compose -p empolimer exec empolimer-back python scripts/create_superuser.py \
+docker exec empolimer-back python scripts/create_superuser.py \
   --username superuser \
   --password 1qaz@WSX \
   --email admin@empolimer.ru
 ```
 
-docker compose -p empolimer logs
+Проверьте mqtt-публикацию на сервер:
 
-Удаление сертификатов:
 ```
-docker exec -it empolimer-front rm -rf /etc/letsencrypt/renewal/empolimer.ru.conf
-docker exec -it empolimer-front rm -rf /etc/letsencrypt/live/empolimer.ru
-docker exec -it empolimer-front rm -rf /etc/letsencrypt/archive/empolimer.ru
+mosquitto_pub -h empolimer.ru -p 1883 -t "devices/demo/air" -i pub_test -u empolimer -P Techno2025 -m '{"datetime":"2025-06-26T21:41:38+12","temp":15.3,"hum":15.0}'
 ```
