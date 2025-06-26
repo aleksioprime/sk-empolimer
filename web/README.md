@@ -65,3 +65,85 @@ mosquitto_sub -h localhost -p 1883 -t "devices/551b1578-2f39-49d5-b44e-0d0b42454
 3. Отправьте сообщение в топик в другом терминале:
 ```
 mosquitto_pub -h localhost -p 1883 -t "devices/demo_2/air" -i pub_test -u empolimer -P Techno2025 -m '{"datetime":"2025-06-26T21:41:38+12","temp":15.3,"hum":15.0}'
+```
+
+
+# Запуск на сервере:
+
+## Подготовка сервера
+
+Установите сервер с ОС Ubuntu 22.04+
+
+Выполните обновление пакетов:
+```
+sudo apt update && sudo apt upgrade -y
+```
+
+Установите Docker:
+```
+sudo apt update && sudo apt install -y docker.io
+```
+
+Установите Compose-плагин:
+```
+DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+mkdir -p $DOCKER_CONFIG/cli-plugins
+curl -SL https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64 -o $DOCKER_CONFIG/cli-plugins/docker-compose
+chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+```
+
+Проверьте установку
+```
+docker compose version
+```
+
+## Переменные окружения
+
+Переменные окружения берутся из репозитория.
+
+Для загрузки контейнеров в Docker Hub используется:
+```
+DOCKER_HUB_USERNAME=<логин пользователя Docker Hub>
+DOCKER_HUB_ACCESS_TOKEN=<access-токен, который был выдан в DockerHub>
+```
+
+Для деплоя приложения из репозитория на сервер используется:
+```
+SERVER_HOST=<IP-адрес сервера>
+SERVER_SSH_KEY=<Приватный ключ для подключения к серверу по SSH>
+SERVER_USER=<Имя пользователя сервера>
+```
+
+Для сервиса создаётся переменная `ENV_VARS`, куда записываются все переменные из `.env.example`
+
+## Добавление бесплатного SSL-сертификата
+
+В контейнер фронтенда добавлен CertBot, с помощью которого происходит регистрация сертификата
+
+Проверьте установку:
+```
+docker exec -it report-front certbot --version
+```
+
+Запустите CertBot для получения сертификатов
+```
+docker exec -it report-front certbot --nginx -d repgen.ru -d www.repgen.ru
+ls -l /etc/letsencrypt/live/repgen.ru/
+```
+
+Добавьте автообновление сертификатов (каждые 90 дней). Для этого откройте crontab:
+```
+sudo crontab -e
+```
+
+Добавьте строку:
+```
+0 3 * * * docker exec report-front certbot renew --quiet && docker exec report-front nginx -s reload
+```
+
+Удаление сертификатов:
+```
+docker exec -it report-front rm -rf /etc/letsencrypt/renewal/repgen.ru.conf
+docker exec -it report-front rm -rf /etc/letsencrypt/live/repgen.ru
+docker exec -it report-front rm -rf /etc/letsencrypt/archive/repgen.ru
+```
