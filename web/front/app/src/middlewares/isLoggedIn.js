@@ -1,5 +1,6 @@
 import { useAuthStore } from "@/stores/auth";
 import jwtService from "@/services/jwt/jwt.service";
+import logger from '@/common/helpers/logger';
 
 export const isLoggedIn = async ({ to }) => {
   const authStore = useAuthStore();
