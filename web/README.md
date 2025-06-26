@@ -152,7 +152,7 @@ docker exec -it empolimer-front rm -rf /etc/letsencrypt/archive/empolimer.ru
 
 ```
 docker compose -p empolimer logs
-docker logs empolimer-nodered
+docker logs empolimer-back
 ```
 
 Сделать ручные миграции на сервере:
