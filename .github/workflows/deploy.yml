@@ -45,6 +45,8 @@ jobs:
             echo "Файл nginx.conf уже существует. Не скачиваем."
           fi
 
+          echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login --username ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
+
           docker compose -f docker-compose.prod.yaml down
           docker compose -f docker-compose.prod.yaml pull
           docker compose -f docker-compose.prod.yaml up -d --remove-orphans
