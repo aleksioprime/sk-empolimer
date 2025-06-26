@@ -18,7 +18,7 @@ class Device(Base):
     description = Column(String, nullable=True)
     location = Column(String(255), nullable=True)
 
-    data = relationship("DeviceData", back_populates="device")
+    data = relationship("DeviceData", back_populates="device", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f'<Device {self.name}>'
@@ -28,7 +28,7 @@ class DeviceData(Base):
     __tablename__ = 'device_data'
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=True, nullable=False)
-    device_id = Column(UUID(as_uuid=True), ForeignKey('devices.id'), nullable=False)
+    device_id = Column(UUID(as_uuid=True), ForeignKey('devices.id', ondelete='CASCADE'), nullable=False)
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     temperature = Column(Float, nullable=True)
     humidity = Column(Float, nullable=True)
