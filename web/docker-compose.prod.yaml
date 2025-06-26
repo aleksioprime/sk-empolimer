@@ -38,7 +38,7 @@ services:
 
   backend:
     image: aleksioprime/empolimer-back:latest
-    container_name: empolimer-backend
+    container_name: empolimer-back
     <<: *app
     depends_on:
       redis:
@@ -59,7 +59,7 @@ services:
   frontend:
     image: aleksioprime/empolimer-front:latest
     <<: *app
-    container_name: empolimer-frontend
+    container_name: empolimer-front
     ports:
       - "80:80"
       - "443:443"

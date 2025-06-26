@@ -122,13 +122,13 @@ SERVER_USER=<Имя пользователя сервера>
 
 Проверьте установку:
 ```
-docker exec -it report-front certbot --version
+docker exec -it empolimer-front certbot --version
 ```
 
 Запустите CertBot для получения сертификатов
 ```
-docker exec -it report-front certbot --nginx -d repgen.ru -d www.repgen.ru
-ls -l /etc/letsencrypt/live/repgen.ru/
+docker exec -it empolimer-front certbot --nginx -d empolimer.ru -d www.empolimer.ru
+ls -l /etc/letsencrypt/live/empolimer.ru/
 ```
 
 Добавьте автообновление сертификатов (каждые 90 дней). Для этого откройте crontab:
@@ -138,12 +138,12 @@ sudo crontab -e
 
 Добавьте строку:
 ```
-0 3 * * * docker exec report-front certbot renew --quiet && docker exec report-front nginx -s reload
+0 3 * * * docker exec empolimer-front certbot renew --quiet && docker exec empolimer-front nginx -s reload
 ```
 
 Удаление сертификатов:
 ```
-docker exec -it report-front rm -rf /etc/letsencrypt/renewal/repgen.ru.conf
-docker exec -it report-front rm -rf /etc/letsencrypt/live/repgen.ru
-docker exec -it report-front rm -rf /etc/letsencrypt/archive/repgen.ru
+docker exec -it empolimer-front rm -rf /etc/letsencrypt/renewal/empolimer.ru.conf
+docker exec -it empolimer-front rm -rf /etc/letsencrypt/live/empolimer.ru
+docker exec -it empolimer-front rm -rf /etc/letsencrypt/archive/empolimer.ru
 ```
