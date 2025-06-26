@@ -18,6 +18,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import logger from '@/common/helpers/logger';
 
 import { useRouter } from 'vue-router'
 const router = useRouter()

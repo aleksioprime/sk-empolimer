@@ -67,9 +67,9 @@ services:
       context: ./front
       target: dev
       args:
-        - VITE_LOGGING=${VITE_LOGGING}
-        - VITE_SERVICE_URL=${VITE_SERVICE_URL}
-    <<: *app
+        - VITE_LOGGING=1
+        - VITE_SERVICE_URL=http://localhost:8201
+        - VITE_WS_URL=ws://localhost:8201
     container_name: empolimer-frontend
     volumes:
       - ./front/app/src:/usr/src/app/src

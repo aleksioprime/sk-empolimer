@@ -15,10 +15,21 @@
     </v-card>
 
     <!-- Кнопка добавить устройство -->
-    <v-btn color="primary" class="mb-4" @click="openAddDialog">
-      <v-icon class="me-1">mdi-plus</v-icon>
-      Добавить устройство
-    </v-btn>
+    <v-row class="d-flex align-center">
+      <v-col cols="auto">
+        <v-btn color="primary" @click="openAddDialog">
+          <v-icon class="me-1">mdi-plus</v-icon>
+          Добавить устройство
+        </v-btn>
+      </v-col>
+      <v-spacer />
+      <v-col cols="auto" class="d-flex justify-end">
+        <v-chip :color="wsConnected ? 'green' : 'error'" small>
+          <v-icon start size="16">{{ wsConnected ? 'mdi-check' : 'mdi-alert' }}</v-icon>
+          {{ wsConnected ? 'Online' : 'Offline' }}
+        </v-chip>
+      </v-col>
+    </v-row>
 
     <!-- Карточки устройств -->
     <v-row>
@@ -147,6 +158,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import logger from '@/common/helpers/logger';
 
 import DeviceChart from '@/components/DeviceChart.vue'
 
@@ -166,8 +178,52 @@ const editingDevice = ref(null)
 const deviceToDelete = ref(null)
 const deviceDetails = ref(null)
 
-const pollingInterval = 5000
-let poller = null
+let ws = null
+
+const wsConnected = ref(false);
+
+const wsStatus = reactive({
+  show: false,
+  ok: true,
+  msg: '',
+})
+
+function showWsStatus(msg, ok = true) {
+  wsStatus.msg = msg;
+  wsStatus.ok = ok;
+  wsStatus.show = true;
+}
+
+function connectWebSocket() {
+  const token = authStore.accessToken
+  const WS_BASE_URL = import.meta.env.VITE_WS_URL || import.meta.env.VITE_SERVICE_URL.replace(/^http/, 'ws')
+  const wsUrl = `${WS_BASE_URL}/api/v1/devices/ws/?token=${token}`
+  const ws = new WebSocket(wsUrl)
+
+  ws.onopen = () => {
+    logger.info('WS OPENED');
+    wsConnected.value = true;
+    showWsStatus('WS соединение установлено', true);
+  }
+
+  ws.onmessage = (event) => {
+
+    try {
+      const data = JSON.parse(event.data)
+      if (data.type === 'devices_update' && Array.isArray(data.devices)) {
+        devices.value = data.devices
+      }
+    } catch (e) {
+    }
+  }
+
+  ws.onclose = () => {
+    logger.info('WS CLOSED');
+    wsConnected.value = false;
+    showWsStatus('WS соединение разорвано', false);
+    setTimeout(connectWebSocket, 2000)
+  }
+}
 
 const form = reactive({
   name: '',
@@ -202,7 +258,6 @@ const nameRules = [
   v => /^[a-z0-9_]{1,8}$/.test(v) || 'Строчные латинские буквы, цифры и _ (до 8)'
 ]
 
-
 async function saveDevice() {
   const { valid } = await deviceForm.value.validate();
   if (!valid) return;
@@ -214,10 +269,6 @@ async function saveDevice() {
       description: form.description,
       location: form.location
     })
-    if (updated) {
-      // Локально обновляем в списке
-      Object.assign(editingDevice.value, updated)
-    }
   } else {
     // Добавление устройства
     const created = await deviceStore.createDevice({
@@ -225,12 +276,9 @@ async function saveDevice() {
       description: form.description,
       location: form.location
     })
-    if (created) {
-      devices.value.push(created)
-    }
   }
   dialogVisible.value = false
-  // Обновить список
+
   devices.value = await deviceStore.loadDevices();
 }
 
@@ -245,7 +293,6 @@ async function deleteDevice() {
     devices.value = devices.value.filter(d => d.id !== deviceToDelete.value.id)
   }
   deleteDialogVisible.value = false
-  // Обновить список
   devices.value = await deviceStore.loadDevices();
 }
 
@@ -277,14 +324,28 @@ async function loadDevices() {
 
 onMounted(async () => {
   loadDevices();
-
-  poller = setInterval(() => {
-    loadDevices();
-  }, pollingInterval);
+  connectWebSocket();
 });
 
 onUnmounted(() => {
-  // Очищаем таймер при уходе со страницы/размонтировании компонента
-  if (poller) clearInterval(poller);
+  if (ws) ws.close();
 });
+
+// Вариант работы пулера для периодического обновления данных:
+
+// const pollingInterval = 5000
+// let poller = null
+
+// onMounted(async () => {
+//   loadDevices();
+
+//   poller = setInterval(() => {
+//     loadDevices();
+//   }, pollingInterval);
+// });
+
+// onUnmounted(() => {
+//   if (poller) clearInterval(poller);
+// });
+
 </script>

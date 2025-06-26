@@ -1,6 +1,6 @@
 import uvicorn
 import logging
-import os
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,6 +13,7 @@ from src.db import redis
 from src.core.config import settings
 from src.core.logger import LOGGING
 from src.api.v1 import router
+from src.api.v1.devices.ws_background import periodic_broadcast
 from src.exceptions.handlers import register_exception_handlers
 
 
@@ -22,9 +23,15 @@ async def lifespan(app: FastAPI):
     Управление жизненным циклом приложения FastAPI.
     Создает подключение к Redis при старте приложения и закрывает его при завершении
     """
+    task = asyncio.create_task(periodic_broadcast())
     redis.redis = Redis(host=settings.redis.host, port=settings.redis.port)
     yield
     await redis.redis.close()
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
 
 # Инициализация FastAPI-приложения
 app = FastAPI(
@@ -51,7 +58,6 @@ app.add_middleware(
 # Подключение роутера для версии v1
 app.include_router(router, prefix="/api/v1")
 
-
 # Точка входа в приложение
 if __name__ == "__main__":
     # Запуск Uvicorn-сервера
@@ -61,5 +67,5 @@ if __name__ == "__main__":
         port=settings.default_port,  # Порт из настроек
         log_config=LOGGING,  # Конфигурация логирования
         log_level=logging.INFO,  # Уровень логирования
-        reload=True,  # Автоматическая перезагрузка при изменении файлов
+        # reload=True,  # Автоматическая перезагрузка при изменении файлов
     )
