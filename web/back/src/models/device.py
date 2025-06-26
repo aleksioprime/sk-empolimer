@@ -1,14 +1,10 @@
 import uuid
-from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import Column, DateTime, String, Float, func, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from src.db.postgres import Base
-
-
-ONLINE_INTERVAL = timedelta(minutes=5)
 
 
 class Device(Base):
@@ -23,19 +19,6 @@ class Device(Base):
     location = Column(String(255), nullable=True)
 
     data = relationship("DeviceData", back_populates="device")
-
-    @property
-    def last_data(self):
-        """Последние данные от устройства"""
-        return self.data.order_by(DeviceData.timestamp.desc()).first()
-
-    @property
-    def online(self):
-        """Онлайн ли устройство (есть данные за последние N минут)"""
-        last = self.last_data
-        if not last:
-            return False
-        return (datetime.now(timezone.utc) - last.timestamp) < ONLINE_INTERVAL
 
     def __repr__(self) -> str:
         return f'<Device {self.name}>'

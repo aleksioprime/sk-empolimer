@@ -1,8 +1,8 @@
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import update, select
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy import update, select, func
+from sqlalchemy.orm import aliased
 from sqlalchemy.exc import NoResultFound
 
 from src.models.device import Device, DeviceData
@@ -14,24 +14,59 @@ class DeviceRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_all(self) -> list[Device]:
-        """ Получает список всех устройств """
-        query = select(Device).options(selectinload(Device.data))
-        result = await self.session.execute(query)
-        return result.scalars().all()
+    async def get_all(self) -> list[tuple[Device, DeviceData | None]]:
+        """
+        Получает все устройства + их последние данные одним запросом через оконные функции
+        """
+        DeviceDataAlias = aliased(DeviceData)
 
-    async def get_detail_by_id(self, device_id: UUID) -> Device:
-        """ Получает детальную информацию об устройстве по его ID """
-        query = (
-            select(Device)
-            .options(
-                joinedload(Device.data)
+        # Оконная функция для поиска самой последней записи по device_id
+        row_number = func.row_number().over(
+            partition_by=DeviceData.device_id,
+            order_by=DeviceData.timestamp.desc()
+        ).label("row_number")
+
+        data_subquery = (
+            select(
+                DeviceData,
+                row_number
             )
-            .where(Device.id == device_id)
+            .subquery()
         )
-        result = await self.session.execute(query)
 
-        return result.unique().scalars().one_or_none()
+        # Соединяем устройства и их last_data (row_number == 1)
+        stmt = (
+            select(Device, DeviceDataAlias)
+            .outerjoin(
+                data_subquery,
+                (Device.id == data_subquery.c.device_id) & (data_subquery.c.row_number == 1)
+            )
+            .outerjoin(DeviceDataAlias, DeviceDataAlias.id == data_subquery.c.id)
+            .order_by(Device.name)
+        )
+
+        result = await self.session.execute(stmt)
+        return result.all()
+
+    async def get_detail_by_id(self, device_id: UUID, data_limit: int = 10) -> tuple[Device, list[DeviceData]]:
+        """ Получает детальную информацию об устройстве по его ID и N последних данных """
+        query = select(Device).where(Device.id == device_id)
+        result = await self.session.execute(query)
+        device = result.scalar_one_or_none()
+
+        if not device:
+            return None, []
+
+        data_query = (
+            select(DeviceData)
+            .where(DeviceData.device_id == device_id)
+            .order_by(DeviceData.timestamp.desc())
+            .limit(data_limit)
+        )
+        data_result = await self.session.execute(data_query)
+        data = data_result.scalars().all()
+
+        return device, data
 
     async def create(self, device: Device) -> None:
         """ Создаёт новое устройство """
@@ -49,7 +84,7 @@ class DeviceRepository:
             .values(**update_data)
         )
         await self.session.execute(stmt)
-        return await self.get_detail_by_id(device_id)
+        return await self._get_by_id(device_id)
 
     async def delete(self, device_id: UUID) -> None:
         """ Удаляет устройство по его ID """

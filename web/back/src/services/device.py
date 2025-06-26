@@ -1,13 +1,16 @@
 from uuid import UUID
 from typing import List
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
 from src.exceptions.base import BaseException, NotFoundException
 from src.models.device import Device
 from src.repositories.uow import UnitOfWork
-from src.schemas.device import DeviceSchema, DeviceUpdateSchema, DeviceDetailSchema
+from src.schemas.device import DeviceSchema, DeviceUpdateSchema, DeviceDetailSchema, DeviceEditSchema, DeviceDataSchema
 
+
+ONLINE_INTERVAL = timedelta(minutes=5)
 
 class DeviceService:
     """
@@ -23,21 +26,39 @@ class DeviceService:
         async with self.uow:
             devices = await self.uow.device.get_all()
 
-        return devices
+        result = []
+        now = datetime.now(timezone.utc)
+        for device, last_data in devices:
+            is_online = (
+                last_data is not None and
+                (now - last_data.timestamp) < ONLINE_INTERVAL
+            )
+            result.append(
+                DeviceSchema(
+                    **device.__dict__,
+                    last_data=DeviceDataSchema.model_validate(last_data) if last_data else None,
+                    online=is_online
+                )
+            )
+        return result
 
-    async def get_detail_by_id(self, device_id: UUID) -> DeviceDetailSchema:
+    async def get_detail_by_id(self, device_id: UUID, data_limit: int = 10) -> DeviceDetailSchema:
         """
         Выдаёт детальную информацию об устройстве по его ID
         """
         async with self.uow:
-            device = await self.uow.device.get_detail_by_id(device_id)
+            device, last_data = await self.uow.device.get_detail_by_id(device_id, data_limit=data_limit)
 
         if device is None:
             raise NotFoundException("Устройство не найдено")
 
-        return device
+        # Формируем единую схему для ответа (Pydantic)
+        return DeviceDetailSchema(
+            **device.__dict__,
+            data=[DeviceDataSchema.model_validate(d) for d in last_data]
+        )
 
-    async def create(self, body: DeviceUpdateSchema) -> DeviceSchema:
+    async def create(self, body: DeviceUpdateSchema) -> DeviceEditSchema:
         """
         Создаёт новое устройство
         """
@@ -50,13 +71,13 @@ class DeviceService:
                 )
                 await self.uow.device.create(device)
                 await self.uow.session.flush()
-                device = await self.uow.device.get_detail_by_id(device.id)
+                device = await self.uow.device._get_by_id(device.id)
             except IntegrityError as exc:
                 raise BaseException("Устройство уже существует") from exc
 
-        return DeviceSchema.model_validate(device)
+        return DeviceEditSchema.model_validate(device)
 
-    async def update(self, device_id: UUID, body: DeviceUpdateSchema) -> DeviceSchema:
+    async def update(self, device_id: UUID, body: DeviceUpdateSchema) -> DeviceEditSchema:
         """
         Обновляет информацию об устройстве по его ID
         """
@@ -68,7 +89,7 @@ class DeviceService:
             except NoResultFound as exc:
                 raise NotFoundException(f"Устройство с ID {device_id} не найдено") from exc
 
-        return DeviceSchema.model_validate(device)
+        return DeviceEditSchema.model_validate(device)
 
     async def delete(self, device_id: UUID) -> None:
         """

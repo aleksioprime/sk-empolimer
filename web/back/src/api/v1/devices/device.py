@@ -11,7 +11,7 @@ from starlette import status
 from src.schemas.security import UserJWT
 from src.core.security import JWTBearer
 from src.dependencies.device import get_device_service
-from src.schemas.device import DeviceSchema, DeviceCreateSchema, DeviceUpdateSchema, DeviceDetailSchema
+from src.schemas.device import DeviceSchema, DeviceCreateSchema, DeviceUpdateSchema, DeviceEditSchema, DeviceDetailSchema
 from src.services.device import DeviceService
 
 
@@ -55,13 +55,14 @@ async def get_device(
 @router.post(
     path='/',
     summary='Создаёт устройство',
+    response_model=DeviceEditSchema,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_device(
         body: DeviceCreateSchema,
         service: Annotated[DeviceService, Depends(get_device_service)],
         user: Annotated[UserJWT, Depends(JWTBearer())],
-) -> DeviceSchema:
+) -> DeviceEditSchema:
     """
     Создаёт новое устройство
     """
@@ -72,7 +73,7 @@ async def create_device(
 @router.patch(
     path='/{device_id}',
     summary='Обновляет устройство',
-    response_model=DeviceSchema,
+    response_model=DeviceEditSchema,
     status_code=status.HTTP_200_OK,
 )
 async def update_device(
@@ -80,7 +81,7 @@ async def update_device(
         body: DeviceUpdateSchema,
         service: Annotated[DeviceService, Depends(get_device_service)],
         user: Annotated[UserJWT, Depends(JWTBearer())],
-) -> DeviceSchema:
+) -> DeviceEditSchema:
     """
     Обновляет устройство по его ID
     """

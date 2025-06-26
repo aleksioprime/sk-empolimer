@@ -40,12 +40,13 @@ docker-compose -p empolimer exec backend python scripts/create_superuser.py \
 
 ### Данные брокера:
 
-имя: empolimer
+логин: empolimer
 пароль: Techno2025
 
 ### Данные Node-Red:
-admin
-12345678
+
+логин: admin
+пароль: 12345678
 
 ### Проверка:
 
@@ -58,9 +59,9 @@ brew install mosquitto
 2. Подпишитесь на топик в одном терминале:
 
 ```
-mosquitto_sub -h localhost -p 1883 -t "empolimer_base/air" -i sub_test -u empolimer -P Techno2025 -v
+mosquitto_sub -h localhost -p 1883 -t "devices/551b1578-2f39-49d5-b44e-0d0b42454b24/air" -i sub_test -u empolimer -P Techno2025 -v
 ```
 
 3. Отправьте сообщение в топик в другом терминале:
 ```
-mosquitto_pub -h localhost -p 1883 -t "devices/123/air" -i pub_test -u empolimer -P Techno2025 -m '{"datetime":"2025-06-23T23:51:38+12","temp":33.3,"hum":33.0}'
+mosquitto_pub -h localhost -p 1883 -t "devices/551b1578-2f39-49d5-b44e-0d0b42454b24/air" -i pub_test -u empolimer -P Techno2025 -m '{"datetime":"2025-06-23T23:51:38+12","temp":33.3,"hum":33.0}'

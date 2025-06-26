@@ -12,10 +12,19 @@ class DeviceSchema(BaseModel):
     description: str | None = Field(None, description="Описание устройства")
     location: str | None = Field(None, description="Местоположение устройства")
     last_data: DeviceDataSchema | None = Field(None, description="Последние полученные данные устройства")
+    online: bool = False
 
     class Config:
         from_attributes = True
 
+class DeviceEditSchema(BaseModel):
+    id: UUID = Field(..., description="Уникальный идентификатор устройства")
+    name: str = Field(..., description="Название модели устройства")
+    description: str | None = Field(None, description="Описание устройства")
+    location: str | None = Field(None, description="Местоположение устройства")
+
+    class Config:
+        from_attributes = True
 
 class DeviceCreateSchema(BaseModel):
     name: str = Field(..., description="Название новой модели устройства")
