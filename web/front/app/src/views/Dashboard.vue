@@ -1,5 +1,5 @@
 <template>
-  <v-container class="mt-12">
+  <v-container class="mt-6">
     <!-- Заголовок -->
     <v-card elevation="10" class="mb-8">
       <v-card-title>
@@ -71,7 +71,6 @@
           </v-card-title>
           <v-card-text>
             <div class="mb-2">
-              <span class="font-weight-bold">Описание:&nbsp;</span>
               <span>{{ device.description || '—' }}</span>
             </div>
             <div class="mb-2">
@@ -139,12 +138,12 @@
           Детали устройства: {{ deviceDetails?.name }}
         </v-card-title>
         <v-card-text v-if="deviceDetails">
-          <div class="mb-1"><b>Описание:</b> {{ deviceDetails.description || "—" }}</div>
+          <div class="mb-1">{{ deviceDetails.description || "—" }}</div>
           <div class="mb-1"><b>Местоположение:</b> {{ deviceDetails.location || "—" }}</div>
           <div v-if="deviceDetails?.data && deviceDetails.data.length">
             <div class="my-2"><b>Графики последних измерений</b></div>
-            <DeviceChart :data="deviceDetails.data" field="temperature" label="Температура (°C)" color="#ff5252" />
-            <DeviceChart :data="deviceDetails.data" field="humidity" label="Влажность (%)" color="#43a047" />
+            <DeviceChart class="my-3" :data="deviceDetails.data" field="temperature" label="Температура (°C)" color="#ff5252" />
+            <DeviceChart class="my-3" :data="deviceDetails.data" field="humidity" label="Влажность (%)" color="#43a047" />
           </div>
         </v-card-text>
         <v-card-actions>

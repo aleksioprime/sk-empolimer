@@ -74,6 +74,11 @@ const chartOptions = {
     tooltip: { enabled: true }
   },
   scales: {
+    x: {
+      ticks: {
+        display: false
+      }
+    },
     y: {
       type: 'linear',
       display: true,
