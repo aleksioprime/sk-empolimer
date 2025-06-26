@@ -39,6 +39,7 @@ jobs:
           # Если nginx.conf НЕ существует, скачиваем его
           if [ ! -f ~/empolimer/nginx/nginx.conf ]; then
             echo "Файл nginx.conf не найден. Скачиваем..."
+            mkdir -p ~/empolimer/nginx
             curl -o ~/empolimer/nginx/nginx.conf https://raw.githubusercontent.com/aleksioprime/sk-empolimer/main/web/front/nginx/nginx.conf
           else
             echo "Файл nginx.conf уже существует. Не скачиваем."
