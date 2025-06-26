@@ -43,6 +43,7 @@ jobs:
             echo "Файл nginx/nginx.conf не найден. Скачиваем..."
             mkdir -p ~/empolimer/nginx
             curl -v -o ~/empolimer/nginx/nginx.conf https://raw.githubusercontent.com/aleksioprime/sk-empolimer/main/web/front/nginx/nginx.conf
+            curl -v -o ~/empolimer/nginx/maintenance.html https://raw.githubusercontent.com/aleksioprime/sk-empolimer/main/web/front/nginx/maintenance.html
           else
             echo "Файл nginx/nginx.conf уже существует. Не скачиваем."
           fi
@@ -68,7 +69,17 @@ jobs:
 
           echo "${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}" | docker login --username ${{ secrets.DOCKER_HUB_USERNAME }} --password-stdin
 
+          # Включить maintenance
+          cp ~/empolimer/nginx/maintenance.html /etc/nginx/html/maintenance.html
+          touch /etc/nginx/html/maintenance.on
+          docker exec empolimer-front nginx -s reload || true
+
           docker compose -f docker-compose.prod.yaml down
           docker compose -f docker-compose.prod.yaml pull
           docker compose -f docker-compose.prod.yaml up -d --remove-orphans
+
+          # Отключить maintenance
+          rm -f /etc/nginx/html/maintenance.on
+          docker exec empolimer-front nginx -s reload || true
+
         EOF
