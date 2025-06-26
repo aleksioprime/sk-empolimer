@@ -37,8 +37,7 @@ services:
       retries: 5
 
   backend:
-    build:
-      context: ./back
+    image: aleksioprime/empolimer-back:latest
     container_name: empolimer-backend
     <<: *app
     depends_on:
@@ -48,8 +47,7 @@ services:
         condition: service_healthy
 
   worker:
-    build:
-      context: ./worker
+    image: aleksioprime/empolimer-worker:latest
     container_name: empolimer-worker
     <<: *app
     depends_on:
@@ -59,8 +57,7 @@ services:
         condition: service_started
 
   frontend:
-    build:
-      context: ./front
+    image: aleksioprime/empolimer-front:latest
     <<: *app
     container_name: empolimer-frontend
     ports:
@@ -70,7 +67,7 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt
       - /var/lib/letsencrypt:/var/lib/letsencrypt
       - /var/www/certbot:/var/www/certbot
-      - /root/repgen/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - /root/empolimer/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       backend:
         condition: service_started
