@@ -1,10 +1,9 @@
 name: Deploy to Server
 
 on:
-  workflow_run:
-    workflows: ["Deploy to Docker Hub"]
-    types:
-      - completed
+  push:
+    branches:
+      - main
 
 jobs:
   test:
