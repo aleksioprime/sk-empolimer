@@ -35,7 +35,7 @@ async def get_all_users(
     return users
 
 @router.get(
-    path='/me',
+    path='/me/',
     summary='Получить информацию о себе',
     response_model=UserSchema,
     status_code=status.HTTP_200_OK,
@@ -69,7 +69,7 @@ async def register(
     return user
 
 @router.patch(
-    path='/{user_id}',
+    path='/{user_id}/',
     summary='Обновление пользователя',
     response_model=UserSchema,
     status_code=status.HTTP_200_OK,
@@ -87,7 +87,7 @@ async def update_user(
     return user
 
 @router.delete(
-    path='/{user_id}',
+    path='/{user_id}/',
     summary='Удаление пользователя',
     status_code=status.HTTP_204_NO_CONTENT,
 )

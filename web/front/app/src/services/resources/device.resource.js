@@ -26,6 +26,6 @@ export class DeviceResource extends ApiService {
   }
 
   getDeviceData(id, config) {
-    return this.$get(`/api/v1/devices/${id}/data`, config);
+    return this.$get(`/api/v1/devices/${id}/data/`, config);
   }
 }

@@ -31,7 +31,7 @@ async def get_devices(
 
 
 @router.get(
-    path='/{device_id}',
+    path='/{device_id}/',
     summary='Получить детальную информацию об устройстве',
     response_model=DeviceDetailSchema,
     status_code=status.HTTP_200_OK,
@@ -67,7 +67,7 @@ async def create_device(
 
 
 @router.patch(
-    path='/{device_id}',
+    path='/{device_id}/',
     summary='Обновляет устройство',
     response_model=DeviceEditSchema,
     status_code=status.HTTP_200_OK,
@@ -86,7 +86,7 @@ async def update_device(
 
 
 @router.delete(
-    path='/{device_id}',
+    path='/{device_id}/',
     summary='Удаляет устройство',
     status_code=status.HTTP_204_NO_CONTENT,
 )
