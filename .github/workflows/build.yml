@@ -55,8 +55,8 @@ jobs:
       id: check_changes
       run: |
         echo "Checking changed files..."
-        CHANGED_BACKEND=$(git diff --name-only HEAD^ HEAD | grep -E '^app/' || true)
-        CHANGED_FRONTEND=$(git diff --name-only HEAD^ HEAD | grep -E '^front/' || true)
+        CHANGED_BACKEND=$(git diff --name-only HEAD^ HEAD | grep -E '^web/back/' || true)
+        CHANGED_FRONTEND=$(git diff --name-only HEAD^ HEAD | grep -E '^web/front/' || true)
 
         if [[ -n "$CHANGED_BACKEND" ]]; then
           echo "Backend changed"
