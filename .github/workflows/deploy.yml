@@ -34,7 +34,7 @@ jobs:
           echo "${{ secrets.ENV_VARS }}" > ~/empolimer/.env
           echo "Файл .env загружен на сервер"
 
-          curl -o ~/empolimer/docker-compose.prod.yaml https://raw.githubusercontent.com/aleksioprime/sk-empolimer/main/docker-compose.prod.yaml
+          curl -o ~/empolimer/docker-compose.prod.yaml https://raw.githubusercontent.com/aleksioprime/sk-empolimer/main/web/docker-compose.prod.yaml
 
           # Если nginx.conf НЕ существует, скачиваем его
           if [ ! -f ~/empolimer/nginx/nginx.conf ]; then
