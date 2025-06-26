@@ -68,6 +68,7 @@ services:
       target: dev
       args:
         - VITE_LOGGING=${VITE_LOGGING}
+        - VITE_SERVICE_URL=${VITE_SERVICE_URL}
     <<: *app
     container_name: empolimer-frontend
     volumes:

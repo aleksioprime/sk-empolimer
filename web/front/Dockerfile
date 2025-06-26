@@ -9,9 +9,11 @@ ENV NODE_OPTIONS=--trace-deprecation
 
 # Внедряем все переменные окружения, которые нам понадобятся
 ARG VITE_LOGGING
+ARG VITE_SERVICE_URL
 
 # Предоставлем переменную готовому контейнеру
 ENV VITE_LOGGING=$VITE_LOGGING
+ENV VITE_SERVICE_URL=$VITE_SERVICE_URL
 
 # Копируем файлы пакетов в контейнер и устанавливаем их
 COPY app/package.json ./
