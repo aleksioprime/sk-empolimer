@@ -165,41 +165,54 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, watch, onMounted, onUnmounted } from 'vue'
 import logger from '@/common/helpers/logger';
+import { jwtDecode } from "jwt-decode";
 
 import DeviceChart from '@/components/DeviceChart.vue'
 
+// Инициализация роутера
 import { useRouter } from 'vue-router'
-import { useAuthStore } from "@/stores/auth";
-import { useDeviceStore } from "@/stores/device";
-
 const router = useRouter()
+
+// Инициализация стора авторизации
+import { useAuthStore } from "@/stores/auth";
 const authStore = useAuthStore();
+
+// Инициализация стора устройств
+import { useDeviceStore } from "@/stores/device";
 const deviceStore = useDeviceStore();
 
-const devices = ref([]);
-const dialogVisible = ref(false)
-const deleteDialogVisible = ref(false)
-const detailDialogVisible = ref(false)
-const editingDevice = ref(null)
-const deviceToDelete = ref(null)
-const deviceDetails = ref(null)
+const devices = ref([]); // Список устройств
 
-let ws = null
-const poller = ref(null)
+/**
+ * Загружает список устройств из стора
+ */
+const loadDevices = async () => {
+  devices.value = await deviceStore.loadDevices();
+}
 
-const POLLING_INTERVAL = 5000 // 5 секунд
+// --- POOLING ---
 
-function startPolling() {
-  if (poller.value) return; // Уже работает
+const poller = ref(null) // Таймер polling (интервал опроса API при потере WS)
+
+const POLLING_INTERVAL = 5000 // Интервал polling, мс
+
+/**
+ * Запускает polling устройств, если не удалось подключиться к WebSocket
+ */
+const startPolling = () => {
+  if (poller.value) return; // Polling уже активен
   poller.value = setInterval(() => {
     loadDevices()
   }, POLLING_INTERVAL)
   logger.info('Start polling')
 }
 
-function stopPolling() {
+/**
+ * Останавливает polling
+ */
+const stopPolling = () => {
   if (poller.value) {
     clearInterval(poller.value)
     poller.value = null
@@ -207,24 +220,47 @@ function stopPolling() {
   }
 }
 
-const wsConnected = ref(false);
+// --- WEBSOCKET ---
 
+let ws = null // WebSocket-соединение
+const wsConnected = ref(false); // Состояние WebSocket-соединения
+
+/**
+ * Для всплывающих уведомлений статуса WS (плашка внизу)
+ */
 const wsStatus = reactive({
   show: false,
   ok: true,
   msg: '',
 })
 
-function showWsStatus(msg, ok = true) {
+/**
+ * Отображает всплывающий статус WS
+ */
+const showWsStatus = (msg, ok = true) => {
   wsStatus.msg = msg;
   wsStatus.ok = ok;
   wsStatus.show = true;
 }
 
-function connectWebSocket() {
-  if (ws) ws.close();
+/**
+ * Подключается к WebSocket с текущим токеном из стора.
+ * Если не удалось — переходит на polling.
+ */
+const connectWebSocket = async () => {
+
+  // Если токена нет или скоро истекает, делаем refresh
+  if (needRefresh(authStore.accessToken)) {
+    logger.info('AccessToken почти истёк, обновляем...');
+    await authStore.refresh();
+  }
+
+  if (ws) ws.close(); // Закрыть старое соединение, если было
+
+  if (!authStore.user) return;
 
   const token = authStore.accessToken
+  // Определяем адрес WebSocket в зависимости от настроек окружения
   const WS_BASE_URL = import.meta.env.VITE_WS_URL || import.meta.env.VITE_SERVICE_URL.replace(/^http/, 'ws')
   const wsUrl = `${WS_BASE_URL}/api/v1/devices/ws/?token=${token}`
   ws = new WebSocket(wsUrl)
@@ -237,13 +273,14 @@ function connectWebSocket() {
   }
 
   ws.onmessage = (event) => {
-
+    // Обрабатываем входящие сообщения (например, обновление списка устройств)
     try {
       const data = JSON.parse(event.data)
       if (data.type === 'devices_update' && Array.isArray(data.devices)) {
         devices.value = data.devices
       }
     } catch (e) {
+      // Некорректные данные игнорируем
     }
   }
 
@@ -259,17 +296,38 @@ function connectWebSocket() {
     wsConnected.value = false;
     showWsStatus('WS соединение разорвано, перехожу на polling', false)
     startPolling()
+    // Попытка переподключения через 2 сек
     setTimeout(connectWebSocket, 2000)
   }
 }
 
+/**
+ * Закрывает WebSocket-соединение
+ */
+const stopSocket = () => {
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
+}
+
+// --- СОЗДАНИЕ И РЕДАКТИРОВАНИЕ УСТРОЙСТВ ---
+
+// Модель для формы создания/редактирования устройства
 const form = reactive({
   name: '',
   description: '',
   location: ''
 })
 
-function openAddDialog() {
+const dialogVisible = ref(false) // Диалог добавления/редактирования устройства
+const editingDevice = ref(null) // Текущее редактируемое устройство
+const deviceForm = ref(null) // Ссылка на форму устройства
+
+/**
+ * Открывает диалог добавления нового устройства
+ */
+const openAddDialog = () => {
   editingDevice.value = null
   form.name = ''
   form.description = ''
@@ -277,7 +335,10 @@ function openAddDialog() {
   dialogVisible.value = true
 }
 
-function openEditDialog(device) {
+/**
+ * Открывает диалог редактирования существующего устройства
+ */
+const openEditDialog = (device) => {
   editingDevice.value = device
   form.name = device.name
   form.description = device.description
@@ -285,31 +346,36 @@ function openEditDialog(device) {
   dialogVisible.value = true
 }
 
-function closeDialog() {
+/**
+ * Закрывает диалог добавления/редактирования
+ */
+const closeDialog = () => {
   dialogVisible.value = false
 }
 
-const deviceForm = ref(null)
-
+// --- Валидация имени устройства ---
 const nameRules = [
   v => !!v || 'Обязательное поле',
   v => /^[a-z0-9_]{1,8}$/.test(v) || 'Строчные латинские буквы, цифры и _ (до 8)'
 ]
 
-async function saveDevice() {
+/**
+ * Сохраняет (создаёт/обновляет) устройство по данным формы
+ */
+const saveDevice = async () => {
   const { valid } = await deviceForm.value.validate();
   if (!valid) return;
 
   if (editingDevice.value) {
     // Обновление устройства
-    const updated = await deviceStore.updateDevice(editingDevice.value.id, {
+    await deviceStore.updateDevice(editingDevice.value.id, {
       name: form.name,
       description: form.description,
       location: form.location
     })
   } else {
-    // Добавление устройства
-    const created = await deviceStore.createDevice({
+    // Добавление нового устройства
+    await deviceStore.createDevice({
       name: form.name,
       description: form.description,
       location: form.location
@@ -320,12 +386,23 @@ async function saveDevice() {
   devices.value = await deviceStore.loadDevices();
 }
 
-function openDeleteDialog(device) {
+// --- УДАЛЕНИЕ УСТРОЙСТВА ---
+
+const deleteDialogVisible = ref(false) // Диалог подтверждения удаления
+const deviceToDelete = ref(null) // Устройство, выбранное для удаления
+
+/**
+ * Открывает диалог подтверждения удаления устройства
+ */
+const openDeleteDialog = (device) => {
   deviceToDelete.value = device
   deleteDialogVisible.value = true
 }
 
-async function deleteDevice() {
+/**
+ * Удаляет выбранное устройство
+ */
+const deleteDevice = async () => {
   const deleted = await deviceStore.deleteDevice(deviceToDelete.value.id)
   if (deleted) {
     devices.value = devices.value.filter(d => d.id !== deviceToDelete.value.id)
@@ -334,16 +411,41 @@ async function deleteDevice() {
   devices.value = await deviceStore.loadDevices();
 }
 
-// Открыть диалог с деталями устройства (и получить данные с сервера)
-async function viewDevice(device) {
+// --- ДЕТАЛЬНАЯ ИНФОРМАЦИЯ ОБ УСТРОЙСТВЕ ---
+
+const detailDialogVisible = ref(false) // Диалог детальной информации
+const deviceDetails = ref(null) // Детальная информация по устройству
+
+/**
+ * Открывает диалог с информацией устройства и загружает данные для графиков
+ */
+const viewDevice = async (device) => {
   deviceDetails.value = await deviceStore.loadDeviceDetailed(device.id)
   detailDialogVisible.value = true
 }
 
-// Форматирование времени (например, HH:MM DD.MM.YY)
-function formatTime(date) {
+// --- ДРУГИЕ ФУНКЦИИ ---
+
+/**
+ * Проверяет, что токен скоро истекает
+ */
+const needRefresh = (token) => {
+  if (!token) return true;
+  try {
+    const decoded = jwtDecode(token);
+    const now = Math.floor(Date.now() / 1000);
+    return (decoded.exp - now) < 30; // например, если осталось меньше 30 сек
+  } catch (e) {
+    return true;
+  }
+}
+
+/**
+ * Форматирует дату в удобный вид (например, "14:32 27.06.25")
+ */
+const formatTime = (date) => {
   if (!date) return '-'
-  const d = new Date(date) // здесь автоматом учитывается зона браузера
+  const d = new Date(date) // Автоматически учитывает временную зону браузера
   return (
     d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) +
     ' ' +
@@ -351,40 +453,28 @@ function formatTime(date) {
   )
 }
 
-async function logout() {
+/**
+ * Выход из аккаунта, переход на экран авторизации
+ */
+const logout = async () => {
   await authStore.logout()
+  stopSocket();
+  stopPolling();
   router.push({ name: 'login' })
 }
 
-async function loadDevices() {
-  devices.value = await deviceStore.loadDevices();
-}
+// --- ЖИЗНЕННЫЙ ЦИКЛ КОМПОНЕНТА ---
 
+// При монтировании компонента: загрузить устройства и подключиться к WebSocket
 onMounted(async () => {
   loadDevices();
   connectWebSocket();
 });
 
+// При размонтировании: закрыть соединения и polling
 onUnmounted(() => {
-  if (ws) ws.close();
+  stopSocket();
   stopPolling();
 });
-
-// Вариант работы пулера для периодического обновления данных:
-
-// const pollingInterval = 5000
-// let poller = null
-
-// onMounted(async () => {
-//   loadDevices();
-
-//   poller = setInterval(() => {
-//     loadDevices();
-//   }, pollingInterval);
-// });
-
-// onUnmounted(() => {
-//   if (poller) clearInterval(poller);
-// });
 
 </script>

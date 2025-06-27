@@ -17,7 +17,7 @@ export class ApiService {
   initRequestInterceptor() {
     this.client.interceptors.request.use(
       async (config) => {
-        const excludedUrls = ["api/v1/login", "api/v1/refresh"];
+        const excludedUrls = ["api/v1/login/", "api/v1/refresh/"];
         if (excludedUrls.some(url => config.url.includes(url))) return config;
 
         // Получение токена. Если его нет, то пропускаем запрос

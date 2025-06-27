@@ -29,43 +29,62 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 
+// Импорт логотипа для отображения на странице входа
 import logo from '@/assets/img/logo.png'
 
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores'
-
+// Импорт сервиса для работы с JWT (получение access/refresh токена)
 import jwtService from "@/services/jwt/jwt.service"
 
+// Импорт и инициализация роутера
+import { useRouter } from 'vue-router'
 const router = useRouter()
-const authStore = useAuthStore()
-const form = ref(null)
-const error = ref('')
-const username = ref('')
-const password = ref('')
-const loading = ref(false)
-const valid = ref(false)
 
+// Импорт и инициализация стора авторизации
+import { useAuthStore } from '@/stores'
+const authStore = useAuthStore()
+
+
+// Ссылки на форму и состояния полей
+const form = ref(null)     // Ссылка на форму (для валидации)
+const error = ref('')      // Сообщение об ошибке авторизации
+const username = ref('')   // Email/логин пользователя
+const password = ref('')   // Пароль пользователя
+const loading = ref(false) // Индикатор загрузки (крутилка)
+const valid = ref(false)   // Состояние валидности формы
+
+// Правила валидации для полей формы
 const rules = {
   required: v => !!v || 'Обязательное поле',
   email: v => !v || /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(v) || 'Некорректный email',
 }
 
-async function login() {
-  const { valid } = await form.value.validate();
-  if (!valid) return;
-  loading.value = true
+/**
+ * Функция входа пользователя
+ * 1. Валидирует форму
+ * 2. Вызывает метод login из стора авторизации
+ * 3. Обрабатывает ошибки и навигирует на dashboard при успехе
+ */
+const login = async () => {
+  const { valid } = await form.value.validate(); // Валидация формы
+  if (!valid) return;                            // Если невалидно — выходим
+  loading.value = true                           // Включаем лоадер
   const credentials = { username: username.value, password: password.value }
-  error.value = null
+  error.value = null                             // Сбросить прошлую ошибку
   const responseMessage = await authStore.login(credentials)
-  loading.value = false
-  if (responseMessage !== 'success') {
+  loading.value = false                          // Отключаем лоадер
+  if (responseMessage !== 'success') {           // Если ответ не успех — показать ошибку
     error.value = responseMessage;
     return
   }
-  await authStore.getMe();
-  await router.push({ name: "dashboard" });
+  await authStore.getMe();                       // Получить информацию о пользователе (для стора)
+  await router.push({ name: "dashboard" });      // Перейти на дашборд
 }
 
+/**
+ * При монтировании компонента:
+ * Если accessToken есть и пользователь уже аутентифицирован —
+ * сразу перекинуть на dashboard, чтобы не показывать форму входа
+ */
 onMounted(async () => {
   const accessToken = jwtService.getAccessToken();
   if (accessToken && authStore.isAuthenticated) {
@@ -73,6 +92,7 @@ onMounted(async () => {
   }
 })
 </script>
+
 
 <style scoped>
 .auth-wrapper {

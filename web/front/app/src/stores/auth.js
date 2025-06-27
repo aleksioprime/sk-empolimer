@@ -2,23 +2,28 @@ import { defineStore } from "pinia";
 import resources from "@/services/resources"; // API-ресурсы
 import jwtService from "@/services/jwt/jwt.service"; // Работа с токенами
 import { jwtDecode } from "jwt-decode"; // Декодирование JWT
+import logger from '@/common/helpers/logger';
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     user: null, // Текущий пользователь
-    accessToken: jwtService.getAccessToken(),
   }),
 
   getters: {
+    accessToken() {
+      return jwtService.getAccessToken();
+    },
     /**
      * Проверка, аутентифицирован ли пользователь.
      * Возвращает true, если access-токен действителен.
      */
     isAuthenticated(state) {
-      if (!state.accessToken) return false;
+      const token = jwtService.getAccessToken();
+
+      if (!token) return false;
 
       try {
-        const decodedToken = jwtDecode(state.accessToken);
+        const decodedToken = jwtDecode(token);
         const now = Math.floor(Date.now() / 1000);
         return decodedToken.exp > now;
       } catch (e) {
