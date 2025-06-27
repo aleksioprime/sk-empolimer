@@ -227,7 +227,7 @@ function connectWebSocket() {
   const token = authStore.accessToken
   const WS_BASE_URL = import.meta.env.VITE_WS_URL || import.meta.env.VITE_SERVICE_URL.replace(/^http/, 'ws')
   const wsUrl = `${WS_BASE_URL}/api/v1/devices/ws/?token=${token}`
-  const ws = new WebSocket(wsUrl)
+  ws = new WebSocket(wsUrl)
 
   ws.onopen = () => {
     logger.info('WS OPENED');
