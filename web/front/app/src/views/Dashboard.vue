@@ -1,5 +1,12 @@
 <template>
   <v-container class="mt-6">
+    <v-snackbar v-model="wsStatus.show" :color="wsStatus.ok ? 'green' : 'red'" location="bottom right" :timeout="3000">
+      <v-icon class="me-2" :color="wsStatus.ok ? 'white' : 'white'">
+        {{ wsStatus.ok ? 'mdi-check-circle' : 'mdi-alert-circle' }}
+      </v-icon>
+      {{ wsStatus.msg }}
+    </v-snackbar>
+
     <!-- Заголовок -->
     <v-card elevation="10" class="mb-8">
       <v-card-title>
@@ -142,8 +149,10 @@
           <div class="mb-1"><b>Местоположение:</b> {{ deviceDetails.location || "—" }}</div>
           <div v-if="deviceDetails?.data && deviceDetails.data.length">
             <div class="my-2"><b>Графики последних измерений</b></div>
-            <DeviceChart class="my-3" :data="deviceDetails.data" field="temperature" label="Температура (°C)" color="#ff5252" />
-            <DeviceChart class="my-3" :data="deviceDetails.data" field="humidity" label="Влажность (%)" color="#43a047" />
+            <DeviceChart class="my-3" :data="deviceDetails.data" field="temperature" label="Температура (°C)"
+              color="#ff5252" />
+            <DeviceChart class="my-3" :data="deviceDetails.data" field="humidity" label="Влажность (%)"
+              color="#43a047" />
           </div>
         </v-card-text>
         <v-card-actions>
@@ -178,6 +187,25 @@ const deviceToDelete = ref(null)
 const deviceDetails = ref(null)
 
 let ws = null
+const poller = ref(null)
+
+const POLLING_INTERVAL = 5000 // 5 секунд
+
+function startPolling() {
+  if (poller.value) return; // Уже работает
+  poller.value = setInterval(() => {
+    loadDevices()
+  }, POLLING_INTERVAL)
+  logger.info('Start polling')
+}
+
+function stopPolling() {
+  if (poller.value) {
+    clearInterval(poller.value)
+    poller.value = null
+    logger.info('Stop polling')
+  }
+}
 
 const wsConnected = ref(false);
 
@@ -202,6 +230,7 @@ function connectWebSocket() {
   ws.onopen = () => {
     logger.info('WS OPENED');
     wsConnected.value = true;
+    stopPolling();
     showWsStatus('WS соединение установлено', true);
   }
 
@@ -216,10 +245,18 @@ function connectWebSocket() {
     }
   }
 
+  ws.onerror = (e) => {
+    logger.info('WS ERROR')
+    wsConnected.value = false
+    showWsStatus('Ошибка WS соединения, перехожу на polling', false)
+    startPolling()
+  }
+
   ws.onclose = () => {
     logger.info('WS CLOSED');
     wsConnected.value = false;
-    showWsStatus('WS соединение разорвано', false);
+    showWsStatus('WS соединение разорвано, перехожу на polling', false)
+    startPolling()
     setTimeout(connectWebSocket, 2000)
   }
 }
@@ -328,6 +365,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (ws) ws.close();
+  stopPolling();
 });
 
 // Вариант работы пулера для периодического обновления данных:

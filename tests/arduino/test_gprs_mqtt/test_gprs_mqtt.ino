@@ -1,5 +1,6 @@
 // --- Выбери используемый модем ---
 #define TINY_GSM_MODEM_SIM800  // Модем SIM800
+#define PIN_PWRKEY 2 // Управляющий пин для включения и выключения GSM-модуля
 
 #include <TinyGsmClient.h>
 #include <PubSubClient.h>
@@ -44,6 +45,7 @@ void setup() {
   delay(1000);
   Serial.println("=== EmPolimer GSM IoT Device ===");
 
+  pinMode(PIN_PWRKEY, OUTPUT);
   modemHardReset();
   delay(2000);
 
@@ -173,7 +175,7 @@ void mqttReconnect() {
 // --- Управление модемом ---
 void modemHardReset() {
   // Если модуль подключён через PowerKey, здесь можно сделать полный ресет по питанию
-  // Например, цифровым пином: digitalWrite(PIN_PWRKEY, LOW); delay(200); digitalWrite(PIN_PWRKEY, HIGH);
+  digitalWrite(PIN_PWRKEY, LOW); delay(1200); digitalWrite(PIN_PWRKEY, HIGH);
   // Здесь просто переинициализация:
   Serial.println("Полная переинициализация модема...");
   Serial1.end(); delay(1000);
