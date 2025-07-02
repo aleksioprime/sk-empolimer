@@ -140,7 +140,7 @@ void loop() {
         float batt = getBatteryVoltage();
 
         // Данные для MQTT в формате JSON
-        String payload = "{\"datetime\":\"" + dt + "\",\"temp\":" + String(t, 1) + ",\"hum\":" + String(h, 1) + ",\"battery\":" + String(batt, 2) + "}";
+        String payload = "{\"datetime\":\"" + dt + "\",\"temp\":" + String(t, 1) + ",\"hum\":" + String(h, 1) + ",\"bat\":" + String(batt, 2) + "}";
         String topic = "devices/" + String(deviceName) + "/air";
         bool ok = mqtt.publish(topic.c_str(), payload.c_str());
 
