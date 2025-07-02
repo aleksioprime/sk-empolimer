@@ -62,12 +62,13 @@ class MQTTWorker:
                     timestamp=dt,
                     temperature=payload.get("temp"),
                     humidity=payload.get("hum"),
+                    battery=payload.get("bat"),
                 )
                 session.add(data)
                 await session.commit()
 
                 logger.info(
-                    f"Данные сохранены: {device_name} {dt} t={payload.get('temp')} h={payload.get('hum')}"
+                    f"Данные сохранены: {device_name} {dt} t={payload.get('temp')} h={payload.get('hum')} b={payload.get('bat')}"
                 )
         except Exception as e:
             logger.error(f"Ошибка обработки сообщения: {e}")

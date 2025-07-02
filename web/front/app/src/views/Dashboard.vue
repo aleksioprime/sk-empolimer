@@ -93,6 +93,10 @@
               <v-icon class="me-1" color="green">mdi-water-percent</v-icon>
               Влажность: <b>{{ device.last_data.humidity }}%</b>
             </div>
+            <div class="mb-2" v-if="device.last_data">
+              <v-icon class="me-1" color="orange">mdi-battery</v-icon>
+              Батарея: <b>{{ device.last_data.battery ? device.last_data.battery + ' В' : '—' }}</b>
+            </div>
             <div class="d-flex align-center" v-if="device.last_data">
               <v-icon class="me-2" color="grey">mdi-clock-outline</v-icon>
               Обновлено:<span class="ms-1">{{ formatTime(device.last_data.timestamp) }}</span>

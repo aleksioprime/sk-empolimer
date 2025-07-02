@@ -32,6 +32,7 @@ class DeviceData(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     temperature = Column(Float, nullable=True)
     humidity = Column(Float, nullable=True)
+    battery = Column(Float, nullable=True)
 
     device = relationship("Device", back_populates="data")
 

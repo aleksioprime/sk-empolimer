@@ -18,6 +18,7 @@ class DeviceDataSchema(BaseModel):
     timestamp: datetime = Field(..., description="Дата/время полученных данных")
     temperature: float = Field(..., description="Температура воздуха")
     humidity: float = Field(..., description="Влажность воздуха")
+    battery: float = Field(..., description="Заряд аккумулятора")
 
     class Config:
         from_attributes = True

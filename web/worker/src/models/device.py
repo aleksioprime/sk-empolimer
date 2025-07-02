@@ -27,6 +27,7 @@ class DeviceData(Base):
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     temperature = Column(Float, nullable=True)
     humidity = Column(Float, nullable=True)
+    battery = Column(Float, nullable=True)
 
     def __repr__(self) -> str:
         return f'<DeviceData {self.device_id} @ {self.timestamp}: {self.temperature}°C, {self.humidity}%>'

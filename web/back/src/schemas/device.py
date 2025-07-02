@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Optional
 from uuid import UUID
 from datetime import datetime
 
@@ -42,6 +43,7 @@ class DeviceDataSchema(BaseModel):
     timestamp: datetime = Field(..., description="Дата/время полученных данных")
     temperature: float = Field(..., description="Температура воздуха")
     humidity: float = Field(..., description="Влажность воздуха")
+    battery: Optional[float] = Field(None, description="Заряд аккумулятора")
 
     class Config:
         from_attributes = True

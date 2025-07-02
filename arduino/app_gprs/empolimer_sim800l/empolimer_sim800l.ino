@@ -1,26 +1,44 @@
-// --- Выбери используемый модем ---
 #define TINY_GSM_MODEM_SIM800  // Модем SIM800
+#define BATTERY_PIN A0         // Аналоговый пин для делителя напряжения
 
-#include <TinyGsmClient.h>  // Работа с GPRS-модемом по AT-командам
-#include <PubSubClient.h>   // MQTT-клиент
-#include <TroykaDHT.h>      // Работа с датчиком температуры и влажности DHT
+#include <TinyGsmClient.h>      // Работа с GPRS-модемом по AT-командам
+#include <PubSubClient.h>       // MQTT-клиент
+#include <TroykaDHT.h>          // Работа с датчиком температуры и влажности DHT
+#include <SoftwareSerial.h>     // Работа с программным последовательным портом (UART)
+#include <Adafruit_NeoPixel.h>  // Работа со светодиодной адресной лентой
+
+// --- Делитель напряжения ---
+const float R1 = 10000.0;       // Первый резистор, Ом
+const float R2 = 10000.0;       // Второй резистор, Ом
+const float VOLTAGE_DIV = 2.0;  // Коэффициент делителя (2.0)
+const float ADC_REF = 5.0;      // Опорное напряжение Arduino
+const int ADC_MAX = 1023;
+
+// --- Светодиодная адресная лента WS2812 ---
+#define LED_PIN 6
+#define LED_COUNT 33
+Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // --- Датчик температуры и влажности ---
 #define DHTPIN 8
 #define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
-// Используем аппаратный Serial1 для модема (TX1=1, RX1=0 на Micro Pro)
+// --- Программный последовательный порт для Raspberry Pi ---
+SoftwareSerial PiSerial(9, 10);
+
+// --- Аппаратный Serial1 для модема (TX1=1, RX1=0 на Micro Pro) ---
 TinyGsm modem(Serial1);
 TinyGsmClient gsmClient(modem);
 PubSubClient mqtt(gsmClient);
 
-// --- MQTT параметры ---
-const char* broker = "mqtt.dealgate.ru";
+// --- Настройки устройства и MQTT ---
+const char* deviceName = "demo";
+const char* broker = "empolimer.ru";
 const int port = 1883;
-const char* mqttUser = "alprime";
-const char* mqttPass = "Techno0255";
-const char* clientId = "empolimer_base";
+const char* mqttUser = "empolimer";
+const char* mqttPass = "Techno2025";
+const char* clientId = "device_demo";
 
 // --- GPRS параметры ---
 const char* apn = "internet.mts.ru";
@@ -34,180 +52,162 @@ const unsigned long gprsTimeout = 10000;        // Таймаут подключ
 const unsigned long gprsRetryInterval = 20000;  // Интервал попыток переподключения (мс)
 const unsigned long mqttTryInterval = 7000;     // Интервал попыток MQTT connect (мс)
 
-// --- Глобальные переменные ---
-float cachedTemp = -100;
-float cachedHum = -1;
-unsigned long lastSensorRead = 0;
-unsigned long lastMqttSend = 0;
-unsigned long lastMqttTry = 0;
-
-enum GprsState {
-  GPRS_INIT,
-  GPRS_CONNECTING,
-  GPRS_CONNECTED,
-  GPRS_ERROR
-};
+// --- Состояния ---
+enum GprsState { GPRS_INIT,
+                 GPRS_CONNECTING,
+                 GPRS_CONNECTED,
+                 GPRS_ERROR };
 GprsState gprsState = GPRS_INIT;
-unsigned long gprsStartTime = 0;
-unsigned long lastGprsRetry = 0;
 
-String getGsmTime() {
-  String timeStr = "";
-  modem.sendAT(GF("+CCLK?"));
-  if (modem.waitResponse(1000L, timeStr) == 1) {
-    int idx = timeStr.indexOf("+CCLK: ");
-    if (idx >= 0) {
-      int start = idx + 8;
-      int end = timeStr.indexOf("\r", start);
-      String dt = timeStr.substring(start, end);
-      dt.replace("\"", "");
-      return dt;  // Вернём строку типа "24/06/24,19:42:56+04"
-    }
-  }
-  // Если времени нет — вернём пустую строку
-  return "";
-}
+// --- Глобальные переменные ---
+float t = 0, h = 0;  // Температура, влажность
+unsigned long lastSensorRead = 0, lastMqttSend = 0, lastMqttTry = 0;
+unsigned long gprsStartTime = 0, lastGprsRetry = 0;
+bool dataReady = false;
 
-void mqttReconnect() {
-  // 1. Проверяем связь с модемом, если нет — авария, всё сбрасываем!
-  if (!modem.testAT()) {
-    Serial.println("Модем не отвечает! Переподключение GPRS...");
-    gprsState = GPRS_ERROR;
-    return;
-  }
-
-  // 2. Пауза между попытками подключения к MQTT
-  if (millis() - lastMqttTry < mqttTryInterval) {
-    return;
-  }
-  lastMqttTry = millis();
-
-  Serial.print("MQTT reconnecting...");
-  if (mqtt.connect(clientId, mqttUser, mqttPass)) {
-    Serial.println("OK!");
-  } else {
-    Serial.print(" failed, rc=");
-    Serial.print(mqtt.state());
-    Serial.println(" retry next loop");
-  }
-}
 
 void setup() {
   Serial.begin(9600);
-  delay(500);
-  Serial.println("Ожидание модема...");
-  delay(2000);
+  PiSerial.begin(9600);
   Serial1.begin(9600);
-  delay(500);
 
-  Serial.println("Инициализация модема...");
+  // Подготовка пина для мониторинга заряда
+  pinMode(BATTERY_PIN, INPUT);
+
+  // Инициализация GPRS-модуля
   modem.restart();
-  delay(2000);
 
-  Serial.println("Инициализация датчика DHT...");
+  // Инициализация датчика температуры и влажности
   dht.begin();
 
-  gprsState = GPRS_INIT;
+  // Инициализация светодиодной ленты
+  strip.begin();
+  strip.show();
 
-  // --- Попросим у SIM800L обновить время через сеть ---
-  // Для некоторых операторов время может не устанавливаться автоматически,
-  // но если работает - "AT+CLTS=1" (разрешить автомат. обновление времени)
+  // Обновление времени через сеть
   modem.sendAT("+CLTS=1");
   modem.sendAT("+CFUN=1");
-
-  Serial.println("Готово! Основной цикл...");
 }
 
 void loop() {
   unsigned long now = millis();
 
-  // --- Автомат GPRS, не блокирует цикл! ---
+  // --- Управление лентой через PiSerial ---
+  if (PiSerial.available()) {
+    String cmd = PiSerial.readStringUntil('\n');
+    cmd.trim();
+    if (cmd == "LED_ON") phytoLedOn();
+    if (cmd == "LED_OFF") phytoLedOff();
+  }
+
+  // FSM для GPRS
   switch (gprsState) {
     case GPRS_INIT:
-      Serial.println("Попытка подключения к GPRS...");
       modem.gprsConnect(apn, gprsUser, gprsPass);
       gprsState = GPRS_CONNECTING;
       gprsStartTime = now;
       break;
     case GPRS_CONNECTING:
       if (modem.isGprsConnected()) {
-        Serial.println("GPRS подключено!");
         gprsState = GPRS_CONNECTED;
         mqtt.setServer(broker, port);
       } else if (now - gprsStartTime > gprsTimeout) {
-        Serial.println("GPRS не подключился за таймаут! Ошибка.");
         gprsState = GPRS_ERROR;
         lastGprsRetry = now;
       }
       break;
     case GPRS_ERROR:
       if (now - lastGprsRetry > gprsRetryInterval) {
-        Serial.println("Пытаемся переподключиться к GPRS...");
         modem.restart();
         delay(1000);
         modem.gprsDisconnect();
         delay(1000);
-        gprsState = GPRS_INIT;  // Через loop снова начнём соединение!
+        gprsState = GPRS_INIT;
       }
       break;
     case GPRS_CONNECTED:
       if (!modem.testAT()) {
-        Serial.println("GSM-модуль не отвечает (GPRS_CONNECTED). Сброс...");
         gprsState = GPRS_ERROR;
         break;
       }
-      if (!mqtt.connected()) {
-        mqttReconnect();
-      }
+      if (!mqtt.connected()) mqttReconnect();
       mqtt.loop();
 
-      // --- Публикация данных и времени ---
-      if (mqtt.connected() && (now - lastMqttSend >= mqttInterval)) {
+      // --- Публикация данных ---
+      if (dataReady && mqtt.connected() && (now - lastMqttSend >= mqttInterval)) {
         lastMqttSend = now;
-        String gsmTime = getGsmTime();
+        String dt = getGsmTime();
+        float batt = getBatteryVoltage();
 
-        // Преобразуем в ISO 8601: "24/06/24,19:42:56+04" -> "2024-06-24T19:42:56+04"
-        gsmTime.replace("\"", "");
-        if (gsmTime.length() >= 17) {
-          // "24/06/24,19:42:56+04"
-          String date = "20" + gsmTime.substring(0, 2) + "-" + gsmTime.substring(3, 5) + "-" + gsmTime.substring(6, 8);
-          String time = gsmTime.substring(9, 17);
-          String zone = gsmTime.substring(17);
-          gsmTime = date + "T" + time + zone;  // "2024-06-24T19:42:56+04"
-        }
+        // Данные для MQTT в формате JSON
+        String payload = "{\"datetime\":\"" + dt + "\",\"temp\":" + String(t, 1) + ",\"hum\":" + String(h, 1) + ",\"battery\":" + String(batt, 2) + "}";
+        String topic = "devices/" + String(deviceName) + "/air";
+        bool ok = mqtt.publish(topic.c_str(), payload.c_str());
 
-        // Формируем JSON (темп и влажность)
-        String json = "{\"datetime\":\"" + gsmTime + "\","
-                                                     "\"temp\":"
-                      + String(cachedTemp, 1) + ","
-                                                "\"hum\":"
-                      + String(cachedHum, 1) + "}";
+        // Данные для Serial в формате для парсинга: 2024-06-26T18:44:15.123+00:00;23.5;53.1
+        String serialLine = "DATA;" + dt + ";" + String(t, 1) + ";" + String(h, 1) + ";" + String(batt, 2);
+        Serial.println(serialLine);
+        PiSerial.println(serialLine);
 
-        mqtt.publish("empolimer_base/air", json.c_str(), true);
-        Serial.print("Published: ");
-        Serial.println(json);
+        dataReady = false;
       }
-      break;
-    default:
       break;
   }
 
-  // --- Опрос DHT11 (работает всегда!) ---
+  // --- Опрос датчика температуры и влажности ---
   if (now - lastSensorRead >= sensorInterval) {
     lastSensorRead = now;
     dht.read();
-    if (dht.getState() == DHT_OK) {
-      cachedTemp = dht.getTemperatureC();
-      cachedHum = dht.getHumidity();
-      Serial.print("Sensor: T=");
-      Serial.print(cachedTemp, 1);
-      Serial.print(" H=");
-      Serial.println(cachedHum, 1);
-    } else {
-      Serial.print("Sensor error: ");
-      Serial.println(dht.getState());
-      cachedTemp = -100;
-      cachedHum = -1;
+    dataReady = (dht.getState() == DHT_OK);
+    if (dataReady) {
+      t = dht.getTemperatureC();
+      h = dht.getHumidity();
     }
   }
+}
+
+// Чтение напряжения батареи через делитель
+float getBatteryVoltage() {
+  int adc = analogRead(BATTERY_PIN);
+  return (adc * ADC_REF / ADC_MAX) * VOLTAGE_DIV;
+}
+
+// Получение времени из GSM-модуля
+String getGsmTime() {
+  String s = "";
+  modem.sendAT(GF("+CCLK?"));
+  if (modem.waitResponse(1000L, s) == 1) {
+    int idx = s.indexOf("+CCLK: ");
+    if (idx >= 0) {
+      int st = idx + 8, en = s.indexOf("\r", st);
+      String dt = s.substring(st, en);
+      dt.replace("\"", "");
+      return dt;
+    }
+  }
+  return "";
+}
+
+// Подключение к MQTT
+void mqttReconnect() {
+  if (!modem.testAT()) {
+    gprsState = GPRS_ERROR;
+    return;
+  }
+  if (millis() - lastMqttTry < mqttTryInterval) return;
+  lastMqttTry = millis();
+  mqtt.connect(clientId, mqttUser, mqttPass);
+}
+
+// Включение светодиодной ленты
+void phytoLedOn() {
+  for (int i = 0; i < LED_COUNT; i++)
+    strip.setPixelColor(i, strip.Color(200, 0, 180));  // Фиолетовый
+  strip.show();
+}
+
+// Выключение светодиодной ленты
+void phytoLedOff() {
+  strip.clear();
+  strip.show();
 }
