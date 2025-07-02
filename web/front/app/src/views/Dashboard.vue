@@ -256,7 +256,12 @@ const connectWebSocket = async () => {
   // Если токена нет или скоро истекает, делаем refresh
   if (needRefresh(authStore.accessToken)) {
     logger.info('AccessToken почти истёк, обновляем...');
-    await authStore.refresh();
+    const refreshed = await authStore.refresh();
+    if (!refreshed) {
+      logger.error('Refresh failed, logging out');
+      logout();
+      return;
+    }
   }
 
   if (ws) ws.close(); // Закрыть старое соединение, если было

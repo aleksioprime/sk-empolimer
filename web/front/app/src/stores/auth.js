@@ -77,8 +77,10 @@ export const useAuthStore = defineStore("auth", {
       if (result.__state === "success") {
         jwtService.saveAccessToken(result.data.access_token);
         resources.auth.setAuthHeader(result.data.access_token);
+        return true;
       } else {
         await this.logout();
+        return false;
       }
     },
 
