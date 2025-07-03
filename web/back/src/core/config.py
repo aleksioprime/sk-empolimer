@@ -47,7 +47,7 @@ class JWTSettings(BaseSettings):
         default='7Fp0SZsBRKqo1K82pnQ2tcXV9XUfuiIJxpDcE5FofP2fL0vlZw3SOkI3YYLpIGP',
     )
     algorithm: str = Field(alias='JWT_ALGORITHM', default='HS256')
-    access_token_expire_time: timedelta = Field(default=timedelta(minutes=15))
+    access_token_expire_time: timedelta = Field(default=timedelta(minutes=1))
     refresh_token_expire_time: timedelta = Field(default=timedelta(days=10))
 
 

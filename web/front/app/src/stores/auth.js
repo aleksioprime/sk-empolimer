@@ -10,9 +10,6 @@ export const useAuthStore = defineStore("auth", {
   }),
 
   getters: {
-    accessToken() {
-      return jwtService.getAccessToken();
-    },
     /**
      * Проверка, аутентифицирован ли пользователь.
      * Возвращает true, если access-токен действителен.

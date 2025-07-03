@@ -172,6 +172,7 @@
 import { ref, reactive, watch, onMounted, onUnmounted } from 'vue'
 import logger from '@/common/helpers/logger';
 import { jwtDecode } from "jwt-decode";
+import jwtService from "@/services/jwt/jwt.service";
 
 import DeviceChart from '@/components/DeviceChart.vue'
 
@@ -254,12 +255,11 @@ const showWsStatus = (msg, ok = true) => {
 const connectWebSocket = async () => {
 
   // Если токена нет или скоро истекает, делаем refresh
-  if (needRefresh(authStore.accessToken)) {
+  if (needRefresh(jwtService.getAccessToken())) {
     logger.info('AccessToken почти истёк, обновляем...');
     const refreshed = await authStore.refresh();
     if (!refreshed) {
-      logger.error('Refresh failed, logging out');
-      logout();
+      logger.error('Обновление не получилось');
       return;
     }
   }
@@ -268,10 +268,11 @@ const connectWebSocket = async () => {
 
   if (!authStore.user) return;
 
-  const token = authStore.accessToken
+  const token = jwtService.getAccessToken()
   // Определяем адрес WebSocket в зависимости от настроек окружения
   const WS_BASE_URL = import.meta.env.VITE_WS_URL || import.meta.env.VITE_SERVICE_URL.replace(/^http/, 'ws')
   const wsUrl = `${WS_BASE_URL}/api/v1/devices/ws/?token=${token}`
+  console.log("Токен для WS:", token);
   ws = new WebSocket(wsUrl)
 
   ws.onopen = () => {
@@ -306,7 +307,7 @@ const connectWebSocket = async () => {
     showWsStatus('WS соединение разорвано, перехожу на polling', false)
     startPolling()
     // Попытка переподключения через 2 сек
-    setTimeout(connectWebSocket, 2000)
+    setTimeout(connectWebSocket, 3000)
   }
 }
 
@@ -441,9 +442,10 @@ const viewDevice = async (device) => {
 const needRefresh = (token) => {
   if (!token) return true;
   try {
+    logger.info("Токен для WS для обновления: ", token);
     const decoded = jwtDecode(token);
     const now = Math.floor(Date.now() / 1000);
-    return (decoded.exp - now) < 30; // например, если осталось меньше 30 сек
+    return (decoded.exp - now) < 30;
   } catch (e) {
     return true;
   }
