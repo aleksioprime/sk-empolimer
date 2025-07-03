@@ -272,7 +272,7 @@ const connectWebSocket = async () => {
   // Определяем адрес WebSocket в зависимости от настроек окружения
   const WS_BASE_URL = import.meta.env.VITE_WS_URL || import.meta.env.VITE_SERVICE_URL.replace(/^http/, 'ws')
   const wsUrl = `${WS_BASE_URL}/api/v1/devices/ws/?token=${token}`
-  console.log("Токен для WS:", token);
+  logger.info("Токен для WS:", token);
   ws = new WebSocket(wsUrl)
 
   ws.onopen = () => {

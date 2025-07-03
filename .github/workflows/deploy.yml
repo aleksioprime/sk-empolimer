@@ -72,4 +72,8 @@ jobs:
           docker compose -f docker-compose.prod.yaml pull
           docker compose -f docker-compose.prod.yaml up -d --remove-orphans
 
+          echo "Удаляем старые неиспользуемые docker-образы..."
+          docker image prune -a -f
+          echo "Готово!"
+
         EOF
