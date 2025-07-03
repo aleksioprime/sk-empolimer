@@ -248,6 +248,9 @@ const showWsStatus = (msg, ok = true) => {
   wsStatus.show = true;
 }
 
+
+const shouldReconnect = ref(true);
+
 /**
  * Подключается к WebSocket с текущим токеном из стора.
  * Если не удалось — переходит на polling.
@@ -305,9 +308,10 @@ const connectWebSocket = async () => {
     logger.info('WS CLOSED');
     wsConnected.value = false;
     showWsStatus('WS соединение разорвано, перехожу на polling', false)
-    startPolling()
-    // Попытка переподключения через 2 сек
-    setTimeout(connectWebSocket, 3000)
+    if (shouldReconnect.value) {
+      startPolling();
+      setTimeout(connectWebSocket, 3000);
+    }
   }
 }
 
@@ -315,6 +319,8 @@ const connectWebSocket = async () => {
  * Закрывает WebSocket-соединение
  */
 const stopSocket = () => {
+  shouldReconnect.value = false;
+
   if (ws) {
     ws.close();
     ws = null;
@@ -470,7 +476,6 @@ const formatTime = (date) => {
 const logout = async () => {
   await authStore.logout()
   stopSocket();
-  stopPolling();
   router.push({ name: 'login' })
 }
 

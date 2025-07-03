@@ -68,17 +68,22 @@ export const useAuthStore = defineStore("auth", {
      * При неудаче выполняется выход из системы.
      */
     async refresh() {
+      const token = jwtService.getRefreshToken()
+
+      if (!token) return;
+
       const result = await resources.auth.refresh({
-        refresh_token: jwtService.getRefreshToken(),
+        refresh_token: token,
       });
+
       if (result.__state === "success") {
         jwtService.saveAccessToken(result.data.access_token);
         resources.auth.setAuthHeader(result.data.access_token);
         return true;
-      } else {
-        await this.logout();
-        return false;
       }
+
+      await this.logout();
+      return false;
     },
 
     /**

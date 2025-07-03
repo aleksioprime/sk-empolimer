@@ -38,16 +38,6 @@ docker-compose -p empolimer exec backend python scripts/create_superuser.py \
   --email admin@empolimer.ru
 ```
 
-### Данные брокера:
-
-логин: empolimer
-пароль: Techno2025
-
-### Данные Node-Red:
-
-логин: admin
-пароль: 12345678
-
 ### Проверка:
 
 1. Установите утилиту mosquitto:
