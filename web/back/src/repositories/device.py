@@ -93,8 +93,6 @@ class DeviceRepository:
                 # Найдём ближайшую к центру
                 closest = min(candidates, key=lambda d: abs(d.timestamp - interval_center))
                 points.append(closest)
-            else:
-                points.append(None)
 
         return device, points
 
