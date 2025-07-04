@@ -8,9 +8,9 @@
 #include <Adafruit_NeoPixel.h>  // Работа со светодиодной адресной лентой
 
 // --- Делитель напряжения ---
-const float R1 = 10000.0;       // Первый резистор, Ом
+const float R1 = 15800.0;       // Первый резистор, Ом
 const float R2 = 10000.0;       // Второй резистор, Ом
-const float VOLTAGE_DIV = 2.0;  // Коэффициент делителя (2.0)
+const float VOLTAGE_DIV = (R1 + R2) / R2;  // Коэффициент делителя
 const float ADC_REF = 5.0;      // Опорное напряжение Arduino
 const int ADC_MAX = 1023;
 
@@ -41,9 +41,9 @@ const char* mqttPass = "Techno2025";
 const char* clientId = "device_demo";
 
 // --- GPRS параметры ---
-const char* apn = "internet.mts.ru";
-const char* gprsUser = "mts";
-const char* gprsPass = "mts";
+const char* apn = "internet.beeline.ru";
+const char* gprsUser = "beeline";
+const char* gprsPass = "beeline";
 
 // --- Интервалы ---
 const unsigned long sensorInterval = 5000;      // Опрос DHT (мс)
