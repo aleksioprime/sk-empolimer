@@ -28,4 +28,13 @@ export class DeviceResource extends ApiService {
   getDeviceData(id, config) {
     return this.$get(`/api/v1/devices/${id}/data/`, config);
   }
+
+  getDeviceDataChart(id, config) {
+    return this.$get(`/api/v1/devices/${id}/data/chart`, config);
+  }
+
+  downloadDeviceData(id, config) {
+    config.responseType = 'blob';
+    return this.$get(`/api/v1/devices/${id}/data/export`, config);
+  }
 }

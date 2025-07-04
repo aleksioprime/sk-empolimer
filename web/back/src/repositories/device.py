@@ -1,4 +1,6 @@
 from uuid import UUID
+from datetime import datetime, timedelta, timezone
+from typing import List, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import update, select, func
@@ -48,8 +50,10 @@ class DeviceRepository:
         result = await self.session.execute(stmt)
         return result.all()
 
-    async def get_detail_by_id(self, device_id: UUID, data_limit: int = 10) -> tuple[Device, list[DeviceData]]:
-        """ Получает детальную информацию об устройстве по его ID и N последних данных """
+    async def get_detail_by_id(self, device_id: UUID, data_limit: int = 24) -> tuple[Optional[Device], List[Optional[DeviceData]]]:
+        """
+        Получает детальную информацию об устройстве по его ID и равномерно распределённые данные за последние сутки.
+        """
         query = select(Device).where(Device.id == device_id)
         result = await self.session.execute(query)
         device = result.scalar_one_or_none()
@@ -57,16 +61,42 @@ class DeviceRepository:
         if not device:
             return None, []
 
+        now = datetime.now(timezone.utc)
+        yesterday = now - timedelta(days=1)
+        interval = timedelta(seconds=(24 * 60 * 60) // data_limit)  # шаг между точками
+
+        # 1. Получить все записи за сутки
         data_query = (
             select(DeviceData)
-            .where(DeviceData.device_id == device_id)
-            .order_by(DeviceData.timestamp.desc())
-            .limit(data_limit)
+            .where(
+                DeviceData.device_id == device_id,
+                DeviceData.timestamp >= yesterday,
+                DeviceData.timestamp <= now
+            )
+            .order_by(DeviceData.timestamp.asc())
         )
         data_result = await self.session.execute(data_query)
-        data = data_result.scalars().all()
+        all_data = data_result.scalars().all()
 
-        return device, data
+        # 2. Для каждого интервала брать ближайшую к центру запись (или None)
+        points = []
+        for i in range(data_limit):
+            interval_start = yesterday + i * interval
+            interval_end = interval_start + interval
+            interval_center = interval_start + (interval / 2)
+            # Найти запись в интервале, ближайшую к центру
+            candidates = [
+                d for d in all_data
+                if interval_start <= d.timestamp < interval_end
+            ]
+            if candidates:
+                # Найдём ближайшую к центру
+                closest = min(candidates, key=lambda d: abs(d.timestamp - interval_center))
+                points.append(closest)
+            else:
+                points.append(None)
+
+        return device, points
 
     async def create(self, device: Device) -> None:
         """ Создаёт новое устройство """

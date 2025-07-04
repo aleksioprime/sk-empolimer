@@ -88,15 +88,28 @@
             <div class="mb-2" v-if="device.last_data">
               <v-icon class="me-1" color="blue">mdi-thermometer</v-icon>
               Температура: <b>{{ device.last_data.temperature }}°C</b>
+              <v-btn size="x-small" variant="text" icon class="ms-1" @click="openChartDialog(device, 'temperature')"
+                :title="'Показать график температуры'">
+                <v-icon color="blue">mdi-chart-line</v-icon>
+              </v-btn>
             </div>
             <div class="mb-2" v-if="device.last_data">
               <v-icon class="me-1" color="green">mdi-water-percent</v-icon>
               Влажность: <b>{{ device.last_data.humidity }}%</b>
+              <v-btn size="x-small" variant="text" icon class="ms-1" @click="openChartDialog(device, 'humidity')"
+                :title="'Показать график влажности'">
+                <v-icon color="green">mdi-chart-line</v-icon>
+              </v-btn>
             </div>
             <div class="mb-2" v-if="device.last_data">
               <v-icon class="me-1" color="orange">mdi-battery</v-icon>
               Батарея: <b>{{ device.last_data.battery ? device.last_data.battery + ' В' : '—' }}</b>
             </div>
+            <v-btn size="small" class="ms-1 my-2" color="secondary" :title="'Скачать все данные устройства в Excel'"
+              @click="downloadExcel(device)">
+              <v-icon start>mdi-file-excel</v-icon>
+              Скачать Excel
+            </v-btn>
             <div class="d-flex align-center" v-if="device.last_data">
               <v-icon class="me-2" color="grey">mdi-clock-outline</v-icon>
               Обновлено:<span class="ms-1">{{ formatTime(device.last_data.timestamp) }}</span>
@@ -165,12 +178,52 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Диалог вывода графика -->
+    <v-dialog v-model="chartDialog.visible" max-width="600">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          График {{ chartDialog.field === 'temperature' ? 'температуры' : 'влажности' }}
+          <v-spacer />
+          <v-btn icon variant="text" @click="chartDialog.visible = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+        <v-card-text>
+          <v-row>
+            <v-col cols="6">
+              <v-text-field v-model="chartDialog.filter.start" label="Начальная дата" type="datetime-local" dense />
+            </v-col>
+            <v-col cols="6">
+              <v-text-field v-model="chartDialog.filter.end" label="Конечная дата" type="datetime-local" dense />
+            </v-col>
+          </v-row>
+          <DeviceChart v-if="chartDialog.data.length" :data="chartDialog.data" :field="chartDialog.field" :showControls="true"
+            :label="chartDialog.field === 'temperature' ? 'Температура (°C)' : 'Влажность (%)'"
+            :color="chartDialog.field === 'temperature' ? '#ff5252' : '#43a047'" />
+          <div v-else class="text-grey mt-3">Нет данных за выбранный период</div>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn color="secondary" :loading="chartDialog.loading" @click="downloadExcel()"
+            :disabled="!chartDialog.data.length" title="Скачать данные за выбранный период">
+            <v-icon start>mdi-file-excel</v-icon>
+            Скачать Excel
+          </v-btn>
+          <v-btn color="primary" @click="fetchChartData" :loading="chartDialog.loading">
+            Обновить
+          </v-btn>
+          <v-spacer />
+          <v-btn text @click="chartDialog.visible = false">Закрыть</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup>
 import { ref, reactive, watch, onMounted, onUnmounted } from 'vue'
 import logger from '@/common/helpers/logger';
+import debounce from 'lodash/debounce';
 import { jwtDecode } from "jwt-decode";
 import jwtService from "@/services/jwt/jwt.service";
 
@@ -438,6 +491,107 @@ const deviceDetails = ref(null) // Детальная информация по 
 const viewDevice = async (device) => {
   deviceDetails.value = await deviceStore.loadDeviceDetailed(device.id)
   detailDialogVisible.value = true
+}
+
+// --- ВЫВОД ГРАФИКА ---
+
+const chartDialog = reactive({
+  visible: false,
+  device: null,
+  field: 'temperature', // или 'humidity'
+  data: [],
+  loading: false,
+  filter: {
+    start: '', // строка вида '2025-07-01'
+    end: '',   // строка вида '2025-07-04'
+  }
+})
+
+const openChartDialog = async (device, field) => {
+  chartDialog.device = device;
+  chartDialog.field = field;
+  chartDialog.visible = true;
+  // По умолчанию — неделя назад и сейчас
+  const now = new Date();
+  const weekAgo = new Date();
+  weekAgo.setDate(now.getDate() - 7);
+
+  // Формат YYYY-MM-DDTHH:mm (чтобы совпадало с HTML5 datetime-local)
+  const toLocalISO = (date) => {
+    const z = n => n < 10 ? '0' + n : n;
+    return `${date.getFullYear()}-${z(date.getMonth() + 1)}-${z(date.getDate())}T${z(date.getHours())}:${z(date.getMinutes())}`;
+  };
+
+  chartDialog.filter.start = toLocalISO(weekAgo);
+  chartDialog.filter.end = toLocalISO(now);
+  await fetchChartData();
+}
+
+const fetchChartData = async () => {
+  chartDialog.loading = true;
+  logger.info("Запрос с параметрами: ", chartDialog)
+
+  const config = {
+    params: {
+      start: chartDialog.filter.start,
+      end: chartDialog.filter.end,
+      field: chartDialog.field,
+    }
+  }
+
+  const response = await deviceStore.loadDeviceDataChart(chartDialog.device.id, config);
+  chartDialog.data = Array.isArray(response) ? response : (response.items || []);
+
+  chartDialog.loading = false;
+}
+
+const fetchChartDataDebounced = debounce(fetchChartData, 400);
+
+// Отслеживание изменение дат и обновление графика
+watch(
+  () => ({ ...chartDialog.filter }),
+  async (newVal, oldVal) => {
+    if (oldVal.start && oldVal.end && newVal.start && newVal.end) {
+      await fetchChartDataDebounced();
+    }
+  },
+  { deep: true }
+);
+
+// --- СКАЧИВАНИЕ ДАННЫХ ---
+
+const downloadExcel = async (device) => {
+  let device_id = device?.id
+  let config = {}
+
+  if (chartDialog.visible) {
+    device_id = chartDialog.device.id
+    config = {
+      params: {
+        start: chartDialog.filter.start,
+        end: chartDialog.filter.end,
+        field: chartDialog.field,
+      }
+    };
+  }
+
+  const result = await deviceStore.downloadDeviceData(device_id, config)
+
+  if (!result) {
+    wsStatus.show = true
+    wsStatus.ok = false
+    wsStatus.msg = 'Ошибка скачивания файла'
+    return
+  }
+  // Для браузера создаём ссылку
+  const url = window.URL.createObjectURL(new Blob([result.blob]))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', result.filename)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
 }
 
 // --- ДРУГИЕ ФУНКЦИИ ---

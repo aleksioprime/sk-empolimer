@@ -52,10 +52,31 @@ export const useDeviceStore = defineStore("device", {
       }
       return null
     },
+    // Загрузка данных устройства
     async loadDeviceData(id, config) {
       const res = await resources.device.getDeviceData(id, config);
       if (res.__state === "success") {
         return res.data
+      }
+      return null
+    },
+    // Загрузка данных устройства для графика
+    async loadDeviceDataChart(id, config) {
+      const res = await resources.device.getDeviceDataChart(id, config);
+      if (res.__state === "success") {
+        return res.data
+      }
+      return null
+    },
+    // Скачивание данных устройства в excel
+    async  downloadDeviceData(id, config) {
+      const res = await resources.device.downloadDeviceData(id, config);
+      if (res.__state === "success") {
+        const filename =
+          res.headers['content-disposition']
+            ?.split('filename=')[1]?.replace(/"/g, '') ||
+          `device_${deviceId}_data.xlsx`
+        return { blob: res.data, filename }
       }
       return null
     },

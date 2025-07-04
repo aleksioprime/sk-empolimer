@@ -1,10 +1,10 @@
-from typing import Annotated
+from typing import Annotated, Literal
 from datetime import datetime, date
 
 from fastapi import Depends, Query
 
 from src.schemas.pagintation import BasePaginationParams
-from src.schemas.data import DeviceDataQueryParams
+from src.schemas.data import DeviceDataQueryParams, DeviceDataChartQueryParams
 from src.dependencies.pagination import get_pagination_params
 from src.dependencies.uow import get_unit_of_work
 from src.repositories.uow import UnitOfWork
@@ -21,6 +21,34 @@ def get_device_data_params(
         limit=pagination.limit,
         offset=pagination.offset,
         timestamp=timestamp,
+    )
+
+def get_device_data_chart_params(
+    start: datetime | None = Query(None, description="Начальная дата/время"),
+    end: datetime | None = Query(None, description="Конечная дата/время"),
+    field: Literal["temperature", "humidity"] | None = Query(None, description="Тип данных: температура или влажность"),
+    limit: int = Query(100, description="Максимальное число точек на графике (по умолчанию 100)"),
+) -> DeviceDataChartQueryParams:
+    """Получает query-параметры фильтрации для данных для графика"""
+
+    return DeviceDataChartQueryParams(
+        start=start,
+        end=end,
+        field=field,
+        limit=limit,
+    )
+
+def get_device_data_export_params(
+    start: datetime | None = Query(None, description="Начальная дата/время"),
+    end: datetime | None = Query(None, description="Конечная дата/время"),
+    field: Literal["temperature", "humidity"] | None = Query(None, description="Тип данных: температура или влажность"),
+) -> DeviceDataChartQueryParams:
+    """Получает query-параметры фильтрации для данных для графика"""
+
+    return DeviceDataChartQueryParams(
+        start=start,
+        end=end,
+        field=field,
     )
 
 def get_device_data_service(
