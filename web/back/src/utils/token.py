@@ -6,6 +6,7 @@ import jwt
 from jwt import ExpiredSignatureError, InvalidTokenError, decode
 
 from src.core.config import settings
+from src.models.user import User
 from src.schemas.security import UserJWT
 from src.exceptions.base import BaseException
 from src.utils.time import get_current_utc_time
@@ -17,34 +18,41 @@ class JWTHelper:
     """
 
     @staticmethod
-    def create_token(user_id: str, expiration: timedelta) -> str:
+    def create_token(user_id: str, expiration: timedelta, is_admin: bool = False, is_superuser: bool = False) -> str:
         """
         Создает JWT токен
         """
         now = get_current_utc_time()
         payload = {
-            'sub': user_id,             # Идентификатор пользователя
-            'iat': now,                 # Время создания токена
-            'exp': now + expiration,    # Время истечения токена
+            'sub': user_id,                 # Идентификатор пользователя
+            'iat': now,                     # Время создания токена
+            'exp': now + expiration,        # Время истечения токена
+            'is_admin': is_admin,           # Пользователь - администратор
+            'is_superuser': is_superuser,   # Пользователь - суперпользователь
         }
 
         encoded_jwt = jwt.encode(payload, key=settings.jwt.secret_key, algorithm=settings.jwt.algorithm)
         return encoded_jwt
 
-    def generate_token_pair(self, user_id: str | UUID) -> tuple[str, str]:
+    def generate_token_pair(self, user: User) -> tuple[str, str]:
         """
         Генерирует пару access и refresh токенов
         """
-        if isinstance(user_id, UUID):
-            user_id = str(user_id)
+        user_id = str(user.id)
+        is_admin = getattr(user, "is_admin", False)
+        is_superuser = getattr(user, "is_superuser", False)
 
         access_token = self.create_token(
             user_id=user_id,
             expiration=settings.jwt.access_token_expire_time,
+            is_admin=is_admin,
+            is_superuser=is_superuser,
         )
         refresh_token = self.create_token(
             user_id=user_id,
             expiration=settings.jwt.refresh_token_expire_time,
+            is_admin=is_admin,
+            is_superuser=is_superuser,
         )
         return access_token, refresh_token
 
@@ -72,9 +80,14 @@ class JWTHelper:
         payload = self.verify(refresh_token)
 
         user_id = payload['sub']
+        is_admin = payload.get('is_admin', False)
+        is_superuser = payload.get('is_superuser', False)
+
         new_access_token = self.create_token(
             user_id=user_id,
             expiration=settings.jwt.access_token_expire_time,
+            is_admin=is_admin,
+            is_superuser=is_superuser,
         )
 
         return new_access_token
@@ -97,6 +110,8 @@ class JWTHelper:
 
             user_data = {
                 "user_id": decoded_token.get("sub"),
+                "is_admin": decoded_token.get("is_admin", False),
+                "is_superuser": decoded_token.get("is_superuser", False),
                 "token": token,
             }
 

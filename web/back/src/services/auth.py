@@ -35,7 +35,7 @@ class AuthService:
         """
         async with self.uow:
             user = await self._login(body)
-            tokens = await self._generate_jwt_tokens(user.id)
+            tokens = await self._generate_jwt_tokens(user)
 
         return tokens
 
@@ -67,11 +67,11 @@ class AuthService:
 
         return user
 
-    async def _generate_jwt_tokens(self, user_id: str | UUID) -> TokenSchema:
+    async def _generate_jwt_tokens(self, user: User) -> TokenSchema:
         """
         Генерирует пару jwt токенов
         """
-        access_token, refresh_token = self.jwt_helper.generate_token_pair(user_id)
+        access_token, refresh_token = self.jwt_helper.generate_token_pair(user)
         return TokenSchema(
             access_token=access_token,
             refresh_token=refresh_token,

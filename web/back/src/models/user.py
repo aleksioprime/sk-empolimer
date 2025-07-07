@@ -4,6 +4,7 @@ from sqlalchemy import Column, DateTime, String, Boolean, func
 from sqlalchemy.dialects.postgresql import UUID
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from src.core.config import settings
 from src.db.postgres import Base
 
 
@@ -21,8 +22,10 @@ class User(Base):
     first_name = Column(String(50))
     last_name = Column(String(50))
     email = Column(String(255), unique=True, nullable=False)
+    photo = Column(String(255), nullable=True)
 
     is_superuser = Column(Boolean, default=False, nullable=False)
+    is_admin = Column(Boolean, default=False, nullable=False)
 
     last_activity = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=func.now())

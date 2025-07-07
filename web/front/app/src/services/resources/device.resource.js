@@ -37,4 +37,8 @@ export class DeviceResource extends ApiService {
     config.responseType = 'blob';
     return this.$get(`/api/v1/devices/${id}/data/export`, config);
   }
+
+  deleteDeviceData(id) {
+    return this.$delete(`/api/v1/devices/${id}/data`);
+  }
 }

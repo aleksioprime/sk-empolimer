@@ -77,7 +77,7 @@ const login = async () => {
     return
   }
   await authStore.getMe();                       // Получить информацию о пользователе (для стора)
-  await router.push({ name: "dashboard" });      // Перейти на дашборд
+  await router.push({ path: "/" });              // Перейти на дашборд
 }
 
 /**
@@ -88,7 +88,7 @@ const login = async () => {
 onMounted(async () => {
   const accessToken = jwtService.getAccessToken();
   if (accessToken && authStore.isAuthenticated) {
-    router.push({ name: "dashboard" });
+    router.push({ path: "/" });
   }
 })
 </script>

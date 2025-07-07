@@ -1,4 +1,5 @@
 import uvicorn
+import os
 import logging
 import asyncio
 from contextlib import asynccontextmanager
@@ -15,6 +16,8 @@ from src.core.logger import LOGGING
 from src.api.v1 import router
 from src.api.v1.devices.ws_background import periodic_broadcast
 from src.exceptions.handlers import register_exception_handlers
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -54,6 +57,9 @@ app.add_middleware(
     allow_methods=["*"],  # Разрешить все методы (GET, POST и т.д.)
     allow_headers=["*"],  # Разрешить все заголовки
 )
+
+os.makedirs(settings.media.photo_path, exist_ok=True)
+app.mount(settings.media.photo_url, StaticFiles(directory=settings.media.photo_path), name="media")
 
 # Подключение роутера для версии v1
 app.include_router(router, prefix="/api/v1")

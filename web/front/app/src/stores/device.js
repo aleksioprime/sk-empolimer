@@ -80,5 +80,13 @@ export const useDeviceStore = defineStore("device", {
       }
       return null
     },
+    // Очистка данных выбраного устройства
+    async clearDeviceData(id) {
+      const res = await resources.device.deleteDeviceData(id);
+      if (res.__state === "success") {
+        return true
+      }
+      return null
+    }
   }
 });

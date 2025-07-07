@@ -19,7 +19,7 @@ class DeviceDataService:
     def __init__(self, uow: UnitOfWork):
         self.uow = uow
 
-    async def get_by_device(self, device_id: UUID, params: DeviceDataQueryParams) -> List[DeviceDataSchema]:
+    async def get_by_device(self, device_id: UUID, params: DeviceDataQueryParams) -> PaginatedResponse[DeviceDataSchema]:
         """
         Выдаёт список данных с конкретного устройства
         """

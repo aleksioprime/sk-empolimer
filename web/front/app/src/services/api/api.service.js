@@ -51,8 +51,7 @@ export class ApiService {
       (error) => {
         const { config, response } = error;
         // Если в ответе ошибка авторизации, то перенаправляется на страницу логирования
-        // || response.status === 403 убрал из скобок
-        if (response && (response.status === 401) && !config._retry) {
+        if (response && (response.status === 401 || response.status === 403 ) && !config._retry) {
           logger.error("Ошибка авторизации запроса");
           config._retry = true;
           this._redirectToLogin();
@@ -72,7 +71,7 @@ export class ApiService {
     // window.location.href = authUrl;
 
     // Переход на страницу логирования в текущем сервисе
-    // window.location.href = '/login';
+    window.location.href = '/login';
   }
 
   // Логирование запросов

@@ -70,8 +70,6 @@ async def delete_device_data(
     return await service.delete_by_device(device_id)
 
 
-
-
 @router.get(
     "/export",
     summary="Скачать данные устройства в формате Excel",
