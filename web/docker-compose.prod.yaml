@@ -40,6 +40,8 @@ services:
     image: aleksioprime/empolimer-back:latest
     container_name: empolimer-back
     <<: *app
+    volumes:
+      - media:/usr/src/app/media
     depends_on:
       redis:
         condition: service_healthy
@@ -64,6 +66,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
+      - media:/usr/share/nginx/html/media
       - /etc/letsencrypt:/etc/letsencrypt
       - /var/lib/letsencrypt:/var/lib/letsencrypt
       - /var/www/certbot:/var/www/certbot
@@ -105,6 +108,7 @@ services:
         condition: service_started
 
 volumes:
+  media:
   postgres_volume:
   redis_volume:
   mosquitto_data:
