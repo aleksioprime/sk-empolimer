@@ -38,7 +38,7 @@ async def get_data_by_devices(
 
 
 @router.get(
-    path="/chart",
+    path="/chart/",
     summary="Данные для графика устройства (агрегированные)",
     response_model=list[DeviceDataSchema],
     status_code=status.HTTP_200_OK,
@@ -71,7 +71,7 @@ async def delete_device_data(
 
 
 @router.get(
-    "/export",
+    "/export/",
     summary="Скачать данные устройства в формате Excel",
     response_class=StreamingResponse,
 )

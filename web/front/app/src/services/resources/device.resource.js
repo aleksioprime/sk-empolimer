@@ -30,15 +30,15 @@ export class DeviceResource extends ApiService {
   }
 
   getDeviceDataChart(id, config) {
-    return this.$get(`/api/v1/devices/${id}/data/chart`, config);
+    return this.$get(`/api/v1/devices/${id}/data/chart/`, config);
   }
 
   downloadDeviceData(id, config) {
     config.responseType = 'blob';
-    return this.$get(`/api/v1/devices/${id}/data/export`, config);
+    return this.$get(`/api/v1/devices/${id}/data/export/`, config);
   }
 
   deleteDeviceData(id) {
-    return this.$delete(`/api/v1/devices/${id}/data`);
+    return this.$delete(`/api/v1/devices/${id}/data/`);
   }
 }
