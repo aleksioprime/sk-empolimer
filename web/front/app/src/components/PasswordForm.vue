@@ -13,7 +13,6 @@ import rules from "@/common/helpers/rules";
 
 const props = defineProps({
   modelValue: { type: Object, required: false, default: () => ({}) },
-  isCreate: { type: Boolean, default: false },
 });
 const emit = defineEmits(["update:modelValue", "submit"]);
 

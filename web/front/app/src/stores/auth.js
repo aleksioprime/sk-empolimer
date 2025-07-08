@@ -100,7 +100,11 @@ export const useAuthStore = defineStore("auth", {
         return result.__state;
       }
 
-      return result.data?.message || "Ошибка авторизации";
+      return (
+        result.data?.response?.data?.detail ||
+        result.data?.message ||
+        "Ошибка авторизации"
+      )
     },
 
     /**

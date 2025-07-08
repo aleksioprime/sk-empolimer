@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from src.schemas.pagintation import BasePaginationParams
+from src.schemas.pagination import BasePaginationParams
 
 
 class DeviceDataQueryParams(BasePaginationParams):

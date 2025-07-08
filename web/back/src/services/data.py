@@ -7,7 +7,7 @@ from openpyxl import Workbook
 from sqlalchemy.exc import NoResultFound
 
 from src.exceptions.base import NotFoundException
-from src.schemas.pagintation import PaginatedResponse
+from src.schemas.pagination import PaginatedResponse
 from src.schemas.data import DeviceDataSchema, DeviceDataQueryParams, DeviceDataChartQueryParams, DeviceDataExportQueryParams, DeviceDataDeleteResponse
 from src.repositories.uow import UnitOfWork
 

@@ -1,7 +1,7 @@
-from uuid import UUID
 import os
 import shutil
 import logging
+from uuid import UUID
 
 from fastapi import UploadFile, HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from src.core.config import settings
 from src.models.user import User
 from src.repositories.uow import UnitOfWork
-from src.schemas.pagintation import PaginatedResponse
+from src.schemas.pagination import PaginatedResponse
 from src.schemas.user import UserCreateSchema, UserUpdateSchema, UpdatePasswordUserSchema, UserSchema, UserQueryParams
 from src.exceptions.base import BaseException
 
@@ -142,3 +142,23 @@ class UserService:
             await self.uow.user.update_photo(user_id, photo_url)
 
             return photo_url
+
+    async def delete_photo(self, user_id: UUID) -> None:
+        """
+        Очищает фотографию пользователя
+        """
+        async with self.uow:
+            user = await self.uow.user.get_user_by_id(user_id)
+            if not user:
+                raise HTTPException(404, detail="Пользователь не найден")
+
+            if user.photo:
+                try:
+                    filename = os.path.basename(user.photo)
+                    filepath = os.path.join(settings.media.photo_path, filename)
+                    if os.path.exists(filepath):
+                        os.remove(filepath)
+                except Exception as e:
+                    logger.warning(f"Не удалось удалить фото пользователя {user_id}: {e}")
+
+            await self.uow.user.update_photo(user_id, None)

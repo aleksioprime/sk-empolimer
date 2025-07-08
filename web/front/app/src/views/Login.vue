@@ -10,15 +10,15 @@
       <!-- Карточка авторизации -->
       <v-card class="mx-auto" width="100%" max-width="400" elevation="8">
         <v-card-text>
-          <v-form @submit.prevent="login" ref="form" v-model="valid">
-            <v-text-field v-model="username" label="Пользователь" type="email" :rules="[rules.required]"
+          <v-form @submit.prevent="login" ref="formRef" validate-on="submit">
+            <v-text-field v-model="form.username" label="Пользователь" type="email" :rules="[rules.required]"
               prepend-inner-icon="mdi-account" autocomplete="username" required />
-            <v-text-field v-model="password" label="Пароль" type="password" :rules="[rules.required]"
+            <v-text-field v-model="form.password" label="Пароль" type="password" :rules="[rules.required]"
               prepend-inner-icon="mdi-lock" autocomplete="current-password" required />
             <v-btn :loading="loading" color="primary" type="submit" class="mt-4" block>
               Войти
             </v-btn>
-            <v-alert v-if="error" type="error" class="mt-3" dense>{{ error }}</v-alert>
+            <v-alert v-if="serverErrorMessage" type="error" class="mt-3" dense>{{ serverErrorMessage }}</v-alert>
           </v-form>
         </v-card-text>
       </v-card>
@@ -27,7 +27,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import rules from "@/common/helpers/rules";
 
 // Импорт логотипа для отображения на странице входа
 import logo from '@/assets/img/logo.png'
@@ -43,41 +44,42 @@ const router = useRouter()
 import { useAuthStore } from '@/stores'
 const authStore = useAuthStore()
 
+// Элемент формы
+const formRef = ref();
+// Сообщение об ошибке авторизации
+const serverErrorMessage = ref('')
+// Индикатор загрузки
+const loading = ref(false)
 
-// Ссылки на форму и состояния полей
-const form = ref(null)     // Ссылка на форму (для валидации)
-const error = ref('')      // Сообщение об ошибке авторизации
-const username = ref('')   // Email/логин пользователя
-const password = ref('')   // Пароль пользователя
-const loading = ref(false) // Индикатор загрузки (крутилка)
-const valid = ref(false)   // Состояние валидности формы
-
-// Правила валидации для полей формы
-const rules = {
-  required: v => !!v || 'Обязательное поле',
-  email: v => !v || /^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(v) || 'Некорректный email',
-}
+// Локальное состояние формы
+const form = reactive({
+  username: "",
+  password: "",
+});
 
 /**
- * Функция входа пользователя
- * 1. Валидирует форму
- * 2. Вызывает метод login из стора авторизации
- * 3. Обрабатывает ошибки и навигирует на dashboard при успехе
+  Авторизация пользователя
  */
 const login = async () => {
-  const { valid } = await form.value.validate(); // Валидация формы
-  if (!valid) return;                            // Если невалидно — выходим
-  loading.value = true                           // Включаем лоадер
-  const credentials = { username: username.value, password: password.value }
-  error.value = null                             // Сбросить прошлую ошибку
+  const { valid } = await formRef.value.validate();
+  if (!valid) return;
+
+  loading.value = true
+  const credentials = {
+    username: form.username,
+    password: form.password,
+  }
+  serverErrorMessage.value = null
+
   const responseMessage = await authStore.login(credentials)
-  loading.value = false                          // Отключаем лоадер
-  if (responseMessage !== 'success') {           // Если ответ не успех — показать ошибку
-    error.value = responseMessage;
+  loading.value = false
+
+  if (responseMessage !== 'success') {
+    serverErrorMessage.value = responseMessage;
     return
   }
-  await authStore.getMe();                       // Получить информацию о пользователе (для стора)
-  await router.push({ path: "/" });              // Перейти на дашборд
+  await authStore.getMe();
+  await router.push({ path: "/" });
 }
 
 /**

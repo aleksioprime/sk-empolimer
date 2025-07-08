@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 from starlette import status
 
 from src.schemas.security import UserJWT
-from src.schemas.pagintation import PaginatedResponse
+from src.schemas.pagination import PaginatedResponse
 from src.core.security import JWTBearer
 from src.dependencies.data import get_device_data_params, get_device_data_service, get_device_data_chart_params, get_device_data_export_params
 from src.schemas.data import DeviceDataSchema, DeviceDataQueryParams, DeviceDataChartQueryParams, DeviceDataExportQueryParams, DeviceDataDeleteResponse

@@ -115,17 +115,18 @@
       <v-card-text>
         <div class="d-flex align-center">
           <v-avatar size="120" class="elevation-3 me-2">
-            <v-img :src="previewUrl || modalDialogPhoto.user?.photo || defaultPhoto" cover />
+            <v-img :src="photoWasCleared ? defaultPhoto : (previewUrl || modalDialogPhoto.user?.photo || defaultPhoto)" cover />
           </v-avatar>
           <input ref="fileInput" type="file" accept="image/*" class="d-none" @change="onPhotoChange">
-          <div class="d-flex justify-center w-100">
+          <div class="d-flex flex-column align-center w-100" style="gap: 8px">
             <v-btn color="primary" @click="onPhotoClick">Изменить</v-btn>
+            <v-btn color="grey" @click="clearSelectedPhoto"
+              :disabled="!previewUrl && !modalDialogPhoto.user?.photo">Очистить</v-btn>
           </div>
-
         </div>
       </v-card-text>
       <v-card-actions class="justify-end">
-        <v-btn color="success" @click="confirmPhoto" :disabled="!previewUrl">Сохранить</v-btn>
+        <v-btn color="success" @click="confirmPhoto" :disabled="!previewUrl && !photoWasCleared">Сохранить</v-btn>
         <v-btn @click="cancelPhoto">Отмена</v-btn>
       </v-card-actions>
     </v-card>
@@ -149,6 +150,8 @@ const userStore = useUserStore();
 
 import { useAuthStore } from "@/stores/auth";
 const authStore = useAuthStore();
+
+// --- СПИСОК ПОЛЬЗОВАТЕЛЕЙ ---
 
 // Переменная списка пользователей
 const users = ref([]);
@@ -196,7 +199,7 @@ useIntersectionObserver(
   { threshold: 1.0 }
 );
 
-// --- МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ/РЕДАКТИРОВАНИЯ ---
+// --- ДОБАВЛЕНИЕ/РЕДАКТИРОВАНИЕ ПОЛЬЗОВАТЕЛЯ ---
 
 // Объект модального окна
 const modalDialogEdit = ref({
@@ -209,6 +212,7 @@ const modalDialogEdit = ref({
 const canEdit = computed(() => authStore.user?.is_superuser || authStore.user?.is_admin);
 
 const canEditUser = (current, target) => {
+  if (!current) return;
   // Нельзя редактировать суперпользователя
   if (target.is_superuser) return false;
   // Суперпользователь может редактировать любого кроме суперюзеров
@@ -287,18 +291,20 @@ const submitDialog = async () => {
   const { form, editing } = modalDialogEdit.value;
 
   if (editing) {
-    await userStore.updateUser(form.id, getUserUpdatePayload(form));
+    const result = await userStore.updateUser(form.id, getUserUpdatePayload(form));
+    if (!result) return;
     const index = users.value.findIndex(p => p.id === form.id);
     if (index !== -1) users.value[index] = { ...users.value[index], ...form };
   } else {
     const newUser = await userStore.createUser(getUserCreatePayload(form));
-    if (newUser) users.value.unshift(newUser);
+    if (!newUser) return;
+    users.value.unshift(newUser);
   }
 
   modalDialogEdit.value.visible = false;
 };
 
-// --- МОДАЛЬНОЕ ОКНО УДАЛЕНИЯ ---
+// --- УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ ---
 
 // Объект модального окна
 const modalDialogDelete = ref({
@@ -312,21 +318,18 @@ const deleteUser = (user) => {
 };
 
 // Подтверждение удаления в модальном окне
-const passwordFormRef = ref();
-
 const confirmDeleteUser = async () => {
-  const valid = await passwordFormRef.value?.submit();
-  if (!valid) return;
-
   const user = modalDialogDelete.value.user;
 
-  const success = await userStore.deleteUser(user.id);
-  if (success) users.value = users.value.filter((p) => p.id !== user.id);
+  const result = await userStore.deleteUser(user.id);
+  if (!result) return;
 
+  users.value = users.value.filter((p) => p.id !== user.id);
   modalDialogDelete.value.visible = false;
 };
 
-// --- МОДАЛЬНОЕ ОКНО СБРОСА ПАРОЛЯ ---
+// --- СБРОС ПАРОЛЯ ---
+const passwordFormRef = ref();
 
 // Объект модального окна
 const modalDialogResetPassword = ref({
@@ -352,13 +355,20 @@ const openResetPasswordDialog = (user) => {
 
 // Подтверждение сброса пароля
 const confirmResetPassword = async () => {
+  const valid = await passwordFormRef.value?.submit();
+  if (!valid) return;
+
   const { form, user } = modalDialogResetPassword.value;
-  if (!form.password || form.password !== form.repeatPassword) return;
-  await userStore.resetPassword(user.id, form);
+
+  const result = await userStore.resetPassword(user.id, form);
+  if (!result) return;
+
   modalDialogResetPassword.value.visible = false;
 };
 
-// --- ЗАГРУЗКА ФОТОГРАФИИ ---
+// --- ЗАГРУЗКА ФОТОГРАФИИ ПОЛЬЗОВАТЕЛЯ ---
+
+const photoWasCleared = ref(false);
 
 // --- Переменные для загрузки фото ---
 const modalDialogPhoto = ref({
@@ -377,11 +387,19 @@ const openPhotoDialog = (user) => {
   };
   previewUrl.value = null;
   tempPhotoFile.value = null;
+  photoWasCleared.value = false;
 };
 
 // Открытие окна выбора локального изображения
 const onPhotoClick = () => {
   fileInput.value?.click();
+};
+
+// Очистка поля от изображения
+const clearSelectedPhoto = () => {
+  previewUrl.value = null;
+  tempPhotoFile.value = null;
+  photoWasCleared.value = true;
 };
 
 // Обработка выбранного изображения
@@ -392,6 +410,7 @@ const onPhotoChange = e => {
     reader.onload = ev => {
       previewUrl.value = ev.target.result;
       tempPhotoFile.value = file;
+      photoWasCleared.value = false;
     };
     reader.readAsDataURL(file);
   }
@@ -400,15 +419,32 @@ const onPhotoChange = e => {
 // Подтвердить загрузку изображения
 const confirmPhoto = async () => {
   const user = modalDialogPhoto.value.user;
-  if (!tempPhotoFile.value || !user) return;
+  if (!user) return;
 
-  const formData = new FormData();
-  formData.append('photo', tempPhotoFile.value);
+  if (photoWasCleared.value) {
+    const result = await userStore.deletePhoto(user.id);
+    if (!result) return;
 
-  const result = await userStore.uploadPhoto(user.id, formData);
+    const index = users.value.findIndex(u => u.id == user.id);
+    if (index !== -1) users.value[index].photo = null;
 
-  const index = users.value.findIndex(u => u.id == user.id);
-  if (index !== -1) users.value[index].photo = result.photo + '?v=' + Date.now();
+    cancelPhoto();
+    return;
+  }
+
+  if (tempPhotoFile.value) {
+    const formData = new FormData();
+    formData.append('photo', tempPhotoFile.value);
+
+    const result = await userStore.uploadPhoto(user.id, formData);
+    if (!result) return;
+
+    const index = users.value.findIndex(u => u.id == user.id);
+    if (index !== -1) users.value[index].photo = result.photo + '?v=' + Date.now();
+
+    cancelPhoto();
+    return;
+  }
 
   cancelPhoto()
 };
@@ -417,13 +453,11 @@ const confirmPhoto = async () => {
 const cancelPhoto = () => {
   previewUrl.value = null;
   tempPhotoFile.value = null;
+  photoWasCleared.value = false;
   if (fileInput.value) fileInput.value.value = '';
   modalDialogPhoto.value.visible = false;
 };
 
-onMounted(() => {
-  fetchUsers();
-});
 </script>
 
 <style scoper>

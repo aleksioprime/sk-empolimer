@@ -1,19 +1,31 @@
 <template>
-  <v-container class="py-10">
+  <v-container class="py-2">
     <v-row no-gutters>
       <!-- Аватар и загрузка фото -->
       <v-col cols="12" md="3" class="d-flex flex-column align-start">
         <div class="relative mb-4 mb-md-0">
-          <v-avatar size="180" class="elevation-3" rounded="xl" style="border: 2px solid #fff;">
+          <v-avatar size="200" class="elevation-3" rounded="xl" style="border: 2px solid #fff;">
             <v-img :src="srcPhotoUrl" cover />
           </v-avatar>
-          <v-btn v-if="!previewUrl" icon="mdi-camera" color="primary" class="absolute bottom-0 end-0" size="small"
-            @click="onPhotoClick" />
+
           <input ref="fileInput" type="file" accept="image/*" class="d-none" @change="onPhotoChange">
-          <div v-if="previewUrl" class="d-flex justify-center mt-3" style="gap: 16px">
+
+          <!-- Кнопки загрузки и очистки -->
+          <div v-if="!previewUrl && !photoWasCleared" class="d-flex flex-column align-center mt-6" style="gap: 16px">
+            <v-btn color="primary" variant="tonal" prepend-icon="mdi-camera" size="small" @click="onPhotoClick">
+              Загрузить фото
+            </v-btn>
+            <v-btn color="grey" variant="tonal" prepend-icon="mdi-delete" size="small" @click="clearSelectedPhoto">
+              Очистить
+            </v-btn>
+          </div>
+
+          <!-- Кнопки подтверждения и отмены -->
+          <div v-if="previewUrl || photoWasCleared" class="d-flex justify-center mt-3" style="gap: 16px">
             <v-btn icon="mdi-check" color="success" size="small" class="rounded-circle" @click="confirmPhoto" />
             <v-btn icon="mdi-close" color="error" size="small" class="rounded-circle" @click="cancelPhoto" />
           </div>
+
         </div>
       </v-col>
 
@@ -43,7 +55,8 @@
           </v-row>
           <v-text-field v-model="form.email" label="Email" :rules="emailRules" type="email" class="mb-4" />
           <v-btn color="primary" type="submit" :loading="loading" :disabled="!valid || !isChanged">Сохранить</v-btn>
-          <v-btn color="secondary" type="button" class="ms-2" @click="openResetPasswordDialog">Изменить пароль</v-btn>
+          <v-btn color="secondary" type="button" class="ms-2" @click="openResetPasswordDialog(user)">Изменить
+            пароль</v-btn>
         </v-form>
       </v-col>
     </v-row>
@@ -69,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed } from 'vue'
 
 const defaultPhoto = "https://ui-avatars.com/api/?background=ccc&color=444&size=128&name=User"
 import rules from "@/common/helpers/rules";
@@ -116,6 +129,8 @@ const saveProfile = async () => {
 
 // --- ЗАГРУЗКА ФОТОГРАФИИ ---
 
+const photoWasCleared = ref(false)
+
 const photoUrl = ref(user.photo)       // Текущий URL аватарки (подтверждённый)
 const previewUrl = ref(null)           // Для предпросмотра после выбора файла
 const fileInput = ref(null)
@@ -124,6 +139,12 @@ const tempPhotoFile = ref(null)
 // Открытие окна выбора локального изображения
 const onPhotoClick = () => {
   fileInput.value?.click()
+}
+
+const clearSelectedPhoto = () => {
+  previewUrl.value = null;
+  tempPhotoFile.value = null;
+  photoWasCleared.value = true;
 }
 
 //
@@ -141,29 +162,48 @@ const onPhotoChange = e => {
 
 // Подтверждение загрузки выбранного изображения
 const confirmPhoto = async () => {
-  if (!tempPhotoFile.value) return
-  loading.value = true
+  loading.value = true;
+  if (photoWasCleared.value) {
+    const result = await userStore.deletePhoto(user.id);
+    if (result) {
+      photoUrl.value = null;
+      if (authStore.user) authStore.user.photo = null;
+    }
+    cancelPhoto();
+    loading.value = false;
+    return;
+  }
 
-  const formData = new FormData()
-  formData.append('photo', tempPhotoFile.value)
+  if (tempPhotoFile.value) {
+    const formData = new FormData();
+    formData.append('photo', tempPhotoFile.value);
 
-  const result = await userStore.uploadPhoto(user.id, formData)
-  photoUrl.value = result.photo || previewUrl.value
+    const result = await userStore.uploadPhoto(user.id, formData);
+    if (result && result.photo) {
+      photoUrl.value = result.photo + "?v=" + Date.now();
+      if (authStore.user) authStore.user.photo = result.photo;
+    }
+    cancelPhoto();
+    loading.value = false;
+    return;
+  }
 
-  cancelPhoto()
+  cancelPhoto();
+  loading.value = false;
 }
 
 // Отмена загрузки выбранного изображения
 const cancelPhoto = () => {
-  previewUrl.value = null
-  tempPhotoFile.value = null
-  loading.value = false
-
-  if (fileInput.value) fileInput.value.value = ''
+  previewUrl.value = null;
+  tempPhotoFile.value = null;
+  photoWasCleared.value = false;
+  loading.value = false;
+  if (fileInput.value) fileInput.value.value = '';
 }
 
 const srcPhotoUrl = computed(() => {
   if (previewUrl.value) return previewUrl.value;
+  if (photoWasCleared.value) return defaultPhoto;
   if (photoUrl.value) return cacheBustUrl(photoUrl.value);
   return defaultPhoto;
 });

@@ -2,7 +2,7 @@ from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel, Field
 
-from src.schemas.pagintation import BasePaginationParams
+from src.schemas.pagination import BasePaginationParams
 
 class UserQueryParams(BasePaginationParams):
 
@@ -40,6 +40,7 @@ class UserCreateSchema(BaseModel):
     last_name: str = Field(..., description="Фамилия пользователя")
     is_admin: Optional[bool] = Field(..., description="Администратор")
 
+
 class UserUpdateSchema(BaseModel):
     """
     Схема для обновления данных пользователя
@@ -49,6 +50,7 @@ class UserUpdateSchema(BaseModel):
     last_name: Optional[str] = Field(None, description="Фамилия пользователя для обновления")
     email: Optional[str] = Field(None, description="Email пользователя")
     is_admin: Optional[bool] = Field(None, description="Администратор")
+
 
 class UpdatePasswordUserSchema(BaseModel):
     """

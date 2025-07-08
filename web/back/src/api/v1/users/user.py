@@ -12,7 +12,7 @@ from src.schemas.security import UserJWT
 from src.core.security import JWTBearer
 from src.dependencies.user import get_user_service, get_user_params
 from src.dependencies.security import role_required
-from src.schemas.pagintation import PaginatedResponse
+from src.schemas.pagination import PaginatedResponse
 from src.schemas.user import UserCreateSchema, UserUpdateSchema, UpdatePasswordUserSchema, UserSchema, UserQueryParams
 from src.services.user import UserService
 
@@ -133,3 +133,20 @@ async def upload_user_avatar(
 ):
     photo_url = await service.upload_photo(user_id, photo)
     return {"photo": photo_url}
+
+
+@router.delete(
+    path='/{user_id}/photo/',
+    summary='Удалить фотографию пользователя',
+    status_code=status.HTTP_200_OK,
+)
+async def delete_user_avatar(
+    user_id: UUID,
+    service: Annotated[UserService, Depends(get_user_service)],
+    user: Annotated[UserJWT, Depends(JWTBearer())],
+):
+    """
+    Удаляет фотографию пользователя
+    """
+    await service.delete_photo(user_id)
+    return {"photo": None}

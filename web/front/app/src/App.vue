@@ -12,8 +12,10 @@ const route = useRoute()
 
 watch(
   () => route.name,
-  (name) => {
-    document.title = `EmPolimer - ${route.meta.title}` || 'EmPolimer'
+  () => {
+    document.title = route.meta.title
+      ? `EmPolimer - ${route.meta.title}`
+      : 'EmPolimer';
   },
   { immediate: true }
 )

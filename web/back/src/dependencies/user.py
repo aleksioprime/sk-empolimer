@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from src.schemas.pagintation import BasePaginationParams
+from src.schemas.pagination import BasePaginationParams
 from src.dependencies.pagination import get_pagination_params
 from src.dependencies.uow import get_unit_of_work
 from src.schemas.user import UserQueryParams

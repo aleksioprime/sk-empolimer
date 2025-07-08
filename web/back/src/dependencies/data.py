@@ -3,7 +3,7 @@ from datetime import datetime, date
 
 from fastapi import Depends, Query
 
-from src.schemas.pagintation import BasePaginationParams
+from src.schemas.pagination import BasePaginationParams
 from src.schemas.data import DeviceDataQueryParams, DeviceDataChartQueryParams
 from src.dependencies.pagination import get_pagination_params
 from src.dependencies.uow import get_unit_of_work

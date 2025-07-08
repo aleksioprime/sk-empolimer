@@ -28,4 +28,8 @@ export class UserResource extends ApiService {
   uploadPhoto(id, data) {
     return this.$patch(`/api/v1/users/${id}/photo/`, data);
   }
+
+  deletePhoto(id) {
+    return this.$delete(`/api/v1/users/${id}/photo/`);
+  }
 }
