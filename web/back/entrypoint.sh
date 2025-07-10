@@ -11,5 +11,5 @@ echo "PostgreSQL доступен!"
 echo "Применяем миграции..."
 alembic upgrade head
 
-echo "Запускаем сервис..."
-exec python src/main.py
+echo "Запускаем сервис: $@"
+exec "$@"

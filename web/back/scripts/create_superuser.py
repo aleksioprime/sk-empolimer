@@ -12,7 +12,9 @@ async def create_or_update_superuser(session: AsyncSession, username: str, passw
     """
     Создаёт или обновляет суперпользователя.
     """
-    # Ищем пользователя по username или email
+    default_first_name = "Администратор"
+    default_last_name = "Администраторов"
+
     query = await session.execute(
         select(User).filter((User.username == username) | (User.email == email))
     )
@@ -31,12 +33,13 @@ async def create_or_update_superuser(session: AsyncSession, username: str, passw
             print(f"Суперпользователь {user.username} уже существует. Используйте --force для обновления.")
         return
 
-    # Создаём нового суперпользователя
     superuser = User(
         username=username,
         password=password,
         email=email,
-        is_superuser=True
+        is_superuser=True,
+        first_name=default_first_name,
+        last_name=default_last_name,
     )
     session.add(superuser)
     try:

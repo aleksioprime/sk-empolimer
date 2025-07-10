@@ -40,6 +40,7 @@ services:
     image: aleksioprime/empolimer-back:latest
     container_name: empolimer-back
     <<: *app
+    command: python src/main.py
     volumes:
       - media:/usr/src/app/media
     depends_on:

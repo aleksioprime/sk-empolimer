@@ -41,6 +41,7 @@ services:
       context: ./back
     container_name: empolimer-backend
     <<: *app
+    command: python src/main.py
     volumes:
       - ./back:/usr/src/app/
     ports:
