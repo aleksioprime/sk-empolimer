@@ -6,7 +6,8 @@ import logger from '@/common/helpers/logger';
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
-    user: null, // Текущий пользователь
+    user: null,
+    access_token: jwtService.getAccessToken(),
   }),
 
   getters: {
@@ -15,8 +16,7 @@ export const useAuthStore = defineStore("auth", {
      * Возвращает true, если access-токен действителен.
      */
     isAuthenticated(state) {
-      const token = jwtService.getAccessToken();
-
+      const token = state.access_token;
       if (!token) return false;
 
       try {
@@ -77,6 +77,7 @@ export const useAuthStore = defineStore("auth", {
       });
 
       if (result.__state === "success") {
+        this.access_token = result.data.access_token;
         jwtService.saveAccessToken(result.data.access_token);
         resources.auth.setAuthHeader(result.data.access_token);
         return true;
